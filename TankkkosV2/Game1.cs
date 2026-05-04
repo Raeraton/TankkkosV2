@@ -48,7 +48,7 @@ namespace Tankkkos
 
             skyBox = new SkyBox(GraphicsDevice, Content.Load<Texture2D>("skybox"));
 
-            player = new Player(GraphicsDevice, terrain, new Vector3(0, 0, 0), activeCamera,
+            player = new Player(GraphicsDevice, terrain, new Vector3(0, 100, 0), activeCamera,
                         Content.Load<Model>("tank"), Content.Load<Effect>("Player"), sun );
 
         }
@@ -60,6 +60,7 @@ namespace Tankkkos
                 Exit();
 
             player.Update();
+            player.Step();
 
             //terrain.Update(player.Position);
 

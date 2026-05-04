@@ -5,8 +5,11 @@ using System;
 
 namespace Tankkkos
 {
-    internal class Player
+    internal class Player : Body
     {
+
+        bool cntrForward = false, cntrBackward = false, cntrLeft = false, cntrRight = false;
+
 
         Model model;
         Vector3 modelDirection = Vector3.Zero;
@@ -14,7 +17,6 @@ namespace Tankkkos
         public Camera Camera;
 
         Terrain terrain;
-        public Vector3 Position;
 
         Effect effect;
 
@@ -23,21 +25,44 @@ namespace Tankkkos
 
         GraphicsDevice dev;
 
-        Matrix localTransform => Matrix.Identity
-                * Matrix.CreateRotationX( -MathF.PI / 2 )
+        BasicGeometry debugSphere;
+
+        Matrix localTransform => 
+                Matrix.CreateRotationX( -MathF.PI / 2 )
                 * Matrix.CreateScale(1f, 1f, 1f)
-                * Matrix.CreateRotationY( -MathF.Atan2( modelDirection.Z, modelDirection.X) );
-        Matrix worldTransform => Matrix.CreateTranslation(Position);
+                * Matrix.CreateRotationY( -MathF.Atan2( modelDirection.Z, modelDirection.X) + MathF.PI / 2 );
+
+        public Vector3 Position => (verlets[0].Pos + verlets[1].Pos +
+            verlets[2].Pos + verlets[3].Pos) * 0.25f;
+        public Vector3 Direction => verlets[0].Pos - verlets[3].Pos;
+        public Vector3 Right => verlets[1].Pos - verlets[0].Pos;
+        public Vector3 Up => 2 * verlets[4].Pos - verlets[0].Pos - verlets[2].Pos;
+        public Matrix WorldTransform => Matrix.CreateWorld(Position + Vector3.Normalize(Up) * 0.25f,
+            Vector3.Normalize(Direction), Vector3.Normalize(Up));
 
 
         public Player( GraphicsDevice dev, Terrain terrain, Vector3 position, Camera camera, Model model, Effect effect, PointLight sun ) 
         {
 
             this.terrain = terrain;
-            this.Position = position;
             this.Camera = camera;
 
             this.model = model;
+
+
+            debugSphere = BasicGeometry.CreateSphere(dev);
+            float w = 0.5f, l = 1;
+            verlets =
+            [
+                new Verlet( new Vector3( l, 0, -w ) + position ),
+                new Verlet( new Vector3( l, 0, w )  + position),
+                new Verlet( new Vector3( -l, 0, w ) + position),
+                new Verlet( new Vector3( -l, 0, -w ) + position ),
+                new Verlet( new Vector3( 0, 1, 0 ) + position),
+                new Verlet( new Vector3( 0, -1, 0 ) + position)
+            ];
+            GenerateFullyConnectedBody();
+
 
 
             this.dev = dev;
@@ -60,7 +85,7 @@ namespace Tankkkos
 
 
             // body
-            effect.Parameters["World"].SetValue(localTransform * worldTransform);
+            effect.Parameters["World"].SetValue(localTransform * WorldTransform);
             foreach (var part in model.Meshes[0].MeshParts)
             {
                 dev.SetVertexBuffer(part.VertexBuffer);
@@ -77,7 +102,7 @@ namespace Tankkkos
                 localTransform *
                 Matrix.CreateRotationY(-MathF.Atan2(camDir.Z, camDir.X) + MathF.Atan2(modelDir.Z, modelDir.X) ) *
                 Matrix.CreateTranslation(new Vector3(modelDir.X, -0.45f, modelDir.Z) * -0.5f)
-                * worldTransform);
+                * WorldTransform);
             foreach (var part in model.Meshes[1].MeshParts)
             {
                 dev.SetVertexBuffer(part.VertexBuffer);
@@ -91,7 +116,7 @@ namespace Tankkkos
             effect.Parameters["World"].SetValue(
                 localTransform *
                 Matrix.CreateTranslation(0f, 0.35f, 0)
-                * worldTransform );
+                * WorldTransform );
             foreach (var part in model.Meshes[2].MeshParts)
             {
                 dev.SetVertexBuffer(part.VertexBuffer);
@@ -100,6 +125,36 @@ namespace Tankkkos
                 effect.CurrentTechnique.Passes[0].Apply();
                 dev.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, part.IndexBuffer.IndexCount);
             }
+
+
+
+
+
+            // Debug
+            float debugSphereSize = 0.3f;
+            debugSphere.Effect.DiffuseColor = Color.White.ToVector3();
+            foreach (var v in verlets)
+            {
+                debugSphere.Draw(Matrix.CreateScale(debugSphereSize) * Matrix.CreateTranslation(v.Pos), 
+                    cam.View, cam.Projection);
+            }
+
+            debugSphere.Effect.DiffuseColor = Color.Red.ToVector3();
+            debugSphere.Draw(Matrix.CreateScale(debugSphereSize) * Matrix.CreateTranslation(Position),
+                    cam.View, cam.Projection);
+
+            debugSphere.Effect.DiffuseColor = Color.Red.ToVector3() + Color.Green.ToVector3();
+            debugSphere.Draw(Matrix.CreateScale(debugSphereSize) * Matrix.CreateTranslation(Position + Vector3.Normalize(Direction) * 2f),
+                    cam.View, cam.Projection);
+
+            debugSphere.Effect.DiffuseColor = Color.Blue.ToVector3() + Color.Green.ToVector3();
+            debugSphere.Draw(Matrix.CreateScale(debugSphereSize) * Matrix.CreateTranslation(Position + Vector3.Normalize(Up) * 2f),
+                    cam.View, cam.Projection);
+
+            debugSphere.Effect.DiffuseColor = Color.Blue.ToVector3() + Color.Red.ToVector3();
+            debugSphere.Draw(Matrix.CreateScale(debugSphereSize) * Matrix.CreateTranslation(Position + Vector3.Normalize(Right) * 2f),
+                    cam.View, cam.Projection);
+
 
 
         }
@@ -111,29 +166,19 @@ namespace Tankkkos
 
         public void Update() 
         {
-            updatePosition();
+            updateInput();
             updateCamera();
         }
 
-        private void updatePosition() 
+        private void updateInput() 
         {
-            if (Camera == null) return;
-
-            var camDir = Vector3.Normalize(Camera.Direction ) * MovementSpeed;
-
             var ks = Keyboard.GetState();
-            if (ks.IsKeyDown(Keys.W))
-                Position += new Vector3( camDir.X, 0, camDir.Z );
-            if (ks.IsKeyDown(Keys.S))
-                Position -= new Vector3(camDir.X, 0, camDir.Z);
-            if (ks.IsKeyDown(Keys.A))
-                Position -= new Vector3(-camDir.Z, 0, camDir.X);
-            if (ks.IsKeyDown(Keys.D))
-                Position += new Vector3(-camDir.Z, 0, camDir.X);
-            if( !ks.IsKeyDown(Keys.LeftShift))
-                modelDirection = Vector3.Normalize(Camera.Direction );
 
-            Position.Y = terrain.GetHeightAtPointWorld(Position.X, Position.Z) + 1;
+            cntrForward = ks.IsKeyDown(Keys.W);
+            cntrBackward = ks.IsKeyDown(Keys.S);
+            cntrLeft = ks.IsKeyDown(Keys.A);
+            cntrRight = ks.IsKeyDown(Keys.D);
+
         }
 
         private void updateCamera() 
@@ -147,6 +192,102 @@ namespace Tankkkos
                 Camera.Direction = Vector3.Transform(Camera.Direction, Matrix.CreateRotationY(-0.05f));
 
             Camera.Position = Position - Vector3.Normalize(Camera.Direction) * CameraDistance;
+
+
+        }
+
+        public void Step()
+        {
+            ApplyForces();
+            for (int i = 0; i < verlets.Length; i++)
+                verlets[i].Step();
+            ApplyConstraints();
+        }
+
+        private void ApplyForces()
+        {
+
+            float topVertexHeight = terrain.GetHeightAtPointWorld(verlets[4].Pos.X, verlets[4].Pos.Z);
+            float bottomVertexHeight = terrain.GetHeightAtPointWorld(verlets[5].Pos.X, verlets[5].Pos.Z);
+            bool inGround = verlets[4].Pos.Y < topVertexHeight && verlets[5].Pos.Y < bottomVertexHeight;
+            bool onGround = (verlets[4].Pos.Y < topVertexHeight || verlets[5].Pos.Y < bottomVertexHeight) && !inGround;
+
+            // Gravitáció
+            Vector3 g = new Vector3(0, -9.81f, 0);
+            for (int i = 0; i < verlets.Length; i++)
+                verlets[i].Acc = g;
+
+            // Felhajtó erő
+            for (int i = 0; i < 4; i++)
+            {
+                float height = verlets[i].Pos.Y;
+                float terrainHeight = terrain.GetHeightAtPointWorld(verlets[i].Pos.X, verlets[i].Pos.Z);
+                if (height < terrainHeight)
+                    verlets[i].Acc += Vector3.Up * Math.Min((terrainHeight - height) * 100, 200);
+            }
+
+
+            Vector3 d = Vector3.Normalize(Direction);
+            Vector3 r = Vector3.Normalize(Right);
+            Vector3 u = Vector3.Normalize(Up);
+
+            for (int i = 0; i < 4; i++)
+            {
+                
+                float height = verlets[i].Pos.Y;
+                float terrainHeight = terrain.GetHeightAtPointWorld(verlets[i].Pos.X, verlets[i].Pos.Z);
+                if (height < terrainHeight)
+                {
+                    verlets[i].Acc += Vector3.Up * Math.Min((terrainHeight - height) * 50, 200);
+                    verlets[i].AddSqFriction(Vector3.Up, 10);
+                }
+
+                if (onGround)
+                {
+                    verlets[i].AddSqFriction(d, 10f);
+                    verlets[i].AddSqFriction(r, 10f);
+                    verlets[i].AddSqFriction(u, 10f);
+                }else
+                {
+                    verlets[i].AddSqFriction(d, 0.1f);
+                    verlets[i].AddSqFriction(r, 0.1f);
+                    verlets[i].AddSqFriction(u, 0.1f);
+                }
+            }
+
+
+            float movementVelocity = 1200f;
+            if (onGround)
+            {
+                if (cntrForward)
+                {
+                    verlets[0].Acc += d * movementVelocity;
+                    verlets[1].Acc += d * movementVelocity;
+                    verlets[2].Acc += d * movementVelocity;
+                    verlets[3].Acc += d * movementVelocity;
+                }
+                if (cntrBackward)
+                {
+                    verlets[0].Acc -= d * movementVelocity;
+                    verlets[1].Acc -= d * movementVelocity;
+                    verlets[2].Acc -= d * movementVelocity;
+                    verlets[3].Acc -= d * movementVelocity;
+                }
+                if (cntrRight)
+                {
+                    verlets[0].Acc += d * movementVelocity;
+                    verlets[1].Acc -= d * movementVelocity;
+                    verlets[2].Acc -= d * movementVelocity;
+                    verlets[3].Acc += d * movementVelocity;
+                }
+                if (cntrLeft)
+                {
+                    verlets[0].Acc -= d * movementVelocity;
+                    verlets[1].Acc += d * movementVelocity;
+                    verlets[2].Acc += d * movementVelocity;
+                    verlets[3].Acc -= d * movementVelocity;
+                }
+            }
 
 
         }

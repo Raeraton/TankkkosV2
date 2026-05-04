@@ -34,3 +34,4 @@ C:\Users\rovac\Documents\gameDev\tankos\TankkkosV2\TankkkosV2\bin\Debug\net8.0-w
 C:\Users\rovac\Documents\gameDev\tankos\TankkkosV2\TankkkosV2\bin\Debug\net8.0-windows\Content\grass1.xnb
 C:\Users\rovac\Documents\gameDev\tankos\TankkkosV2\TankkkosV2\bin\Debug\net8.0-windows\Content\rock1.xnb
 C:\Users\rovac\Documents\gameDev\tankos\TankkkosV2\TankkkosV2\bin\Debug\net8.0-windows\Content\sand1.xnb
+C:\Users\rovac\Documents\gameDev\tankos\TankkkosV2\TankkkosV2\obj\Debug\net8.0-windows\TankkkosV2.sourcelink.json
