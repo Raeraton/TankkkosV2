@@ -1,0 +1,8 @@
+Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
+"C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/../Player.fx","C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/bin/Windows/Player.xnb","EffectProcessor","CompiledEffectContent",1302,3002,0.3132254
+"C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/../Terrain.fx","C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/bin/Windows/Terrain.xnb","EffectProcessor","CompiledEffectContent",1565,3204,0.2431142
+"C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/grass1.jpg","C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/bin/Windows/grass1.xnb","TextureProcessor","Texture2DContent",3049,116813,0.040148
+"C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/rock1.jpg","C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/bin/Windows/rock1.xnb","TextureProcessor","Texture2DContent",4840,136633,0.0154851
+"C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/sand1.jpg","C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/bin/Windows/sand1.xnb","TextureProcessor","Texture2DContent",4748,65621,0.0036545
+"C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/skybox.jpg","C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/bin/Windows/skybox.xnb","TextureProcessor","Texture2DContent",216601,8388693,0.2146655
+"C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/tank.fbx","C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/bin/Windows/tank.xnb","ModelProcessor","ModelContent",21340,6709,0.0704634
