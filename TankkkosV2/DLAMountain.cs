@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
+using SharpDX.Direct3D11;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,11 +10,13 @@ using System.Threading.Tasks;
 namespace Tankkkos
 {
 
-    struct UintPair { 
+    struct UintPair
+    {
         public uint n1;
         public uint n2;
 
-        public UintPair(uint n1, uint n2) {
+        public UintPair(uint n1, uint n2)
+        {
             this.n1 = n1;
             this.n2 = n2;
         }
@@ -31,14 +34,17 @@ namespace Tankkkos
         }
     }
 
-    class UintPairTree {
+    class UintPairTree
+    {
         public UintPair thisPair;
         public List<UintPairTree> nodes;
+        public uint depth;
 
-        public UintPairTree(UintPair pair)
+        public UintPairTree(UintPair pair, uint depth)
         {
             this.thisPair = pair;
             nodes = new List<UintPairTree>();
+            this.depth = depth;
         }
 
     }
@@ -46,40 +52,80 @@ namespace Tankkkos
     internal class DLAMountain
     {
 
+        public static uint maxSize = uint.MaxValue;
+
         float[,] HeightMap;
 
-        
+        Random random;
+
+
+        int randomBits = 0;
+        int randomBitsIdx = 255;
+        void getRandomDir(out int dx, out int dz)
+        {
+            if (randomBitsIdx > 15)
+            {
+                randomBits = random.Next();
+                randomBitsIdx = 0;
+            }
+
+            int bits = randomBits & 0b11;
+            randomBits >>= 2;
+            randomBitsIdx++;
+
+            switch (bits)
+            {
+                case 0:
+                    dx = -1; dz = 0;
+                    break;
+                case 1:
+                    dx = 0; dz = -1;
+                    break;
+                case 2:
+                    dx = 1; dz = 0;
+                    break;
+                case 3:
+                    dx = 0; dz = 1;
+                    break;
+                default:
+                    dx = 1; dz = 0;
+                    break;
+            }
+
+        }
+
+
 
         public DLAMountain(int seed, uint res)
         {
-
             generate(seed, res);
 
         }
 
-        void generate( int seed, uint iterations )
+        void generate(int seed, uint iterations)
         {
 
-            Random random = new Random((int)seed);
+            random = new Random((int)seed);
 
             bool[,] occupied = new bool[4, 4];
             float[,] hm = new float[4, 4];
-            for ( uint i=0; i < 4; i++) { for (uint j = 0; j < 4; j++) { occupied[i, j] = false; hm[i, j] = 0.0f;  }}
+            for (uint i = 0; i < 4; i++) { for (uint j = 0; j < 4; j++) { occupied[i, j] = false; hm[i, j] = 0.0f; } }
             occupied[1, 2] = true;
 
 
-            for (uint i = 0; i < iterations; i++) {
+            for (uint i = 0; i < iterations; i++)
+            {
                 bool[,] tooccupied;
                 float[,] thm;
-                addLayer(ref random, occupied, hm, out tooccupied, out thm);
+                addLayer(occupied, hm, out tooccupied, out thm);
                 occupied = tooccupied;
                 hm = thm;
             }
 
             float maxPoint = 0;
-            for( uint i=0; i < hm.GetLength(0); i++)
+            for (uint i = 0; i < hm.GetLength(0); i++)
             {
-                for( uint j=0; j < hm.GetLength(1); j++)
+                for (uint j = 0; j < hm.GetLength(1); j++)
                 {
                     if (hm[i, j] > maxPoint) { maxPoint = hm[i, j]; }
 
@@ -94,55 +140,52 @@ namespace Tankkkos
                 }
             }
 
+            hm = upscaleHeightMap(hm);
+            hm = BlurHeightMap(hm);
+
             HeightMap = hm;
 
 
         }
 
-        void addLayer( ref Random random, bool[,] ioccupied, float[,] ihm, out bool[,] ooccupied, out float[,] ohm ) {
+        void addLayer(bool[,] ioccupied, float[,] ihm, out bool[,] ooccupied, out float[,] ohm)
+        {
             // should be a nxn matrix
-            uint width = (uint)ioccupied.GetLength(0)*2;
+            uint width = (uint)ioccupied.GetLength(0) * 2;
 
-            ooccupied = addParticles(ref random, ioccupied, width * width / 10);
+            ooccupied = addParticles(ioccupied, width * width / 10);
 
             ohm = BlurHeightMap(upscaleHeightMap(ihm));
 
-            for( uint i=0; i<ohm.GetLength(0); i++)
-            {
-                for( uint j=0;  j<ohm.GetLength(1); j++)
-                {
-                    if(ooccupied[i,j])
-                    {
-                        ohm[i, j] += 1f; 
-                    }
-                }
-            }
+            // add height to the new particles
+            addParticlesToHeightMap(ooccupied, ref ohm);
 
             ohm = BlurHeightMap(ohm);
 
         }
 
-        
-        bool[,] addParticles( ref Random random, bool[,] occupied, uint particleCount ) {
+
+        bool[,] addParticles(bool[,] occupied, uint particleCount)
+        {
 
             bool[,] o = crispUpscaling(occupied);
 
             uint addedCount = 0;
-            while (addedCount < particleCount) {
+            while (addedCount < particleCount)
+            {
                 int posx = (int)random.Next(o.GetLength(0));
                 int posz = (int)random.Next(o.GetLength(1));
 
-                int diffx = (int)random.Next(3) - 1;
-                int diffz = (int)random.Next(3) - 1;
+                int diffx, diffz;
+                getRandomDir(out diffx, out diffz);
 
                 if (o[posx, posz]) continue;
-                if ( (diffx == 0 && diffz == 0)
-                    || (diffx==-1&&posx<1)
-                    || (diffx == 1&&posx>o.GetLength(0)-2)
-                    || (diffz==-1&&posz < 1)
-                    || (diffz==1&&posz>o.GetLength(1)-2) ) continue;
+                if ((diffx == -1 && posx < 1)
+                    || (diffx == 1 && posx > o.GetLength(0) - 2)
+                    || (diffz == -1 && posz < 1)
+                    || (diffz == 1 && posz > o.GetLength(1) - 2)) continue;
 
-                while ( !o[posx+diffx, posz+diffz])
+                while (!o[posx + diffx, posz + diffz])
                 {
                     posx += diffx;
                     posz += diffz;
@@ -150,18 +193,17 @@ namespace Tankkkos
                     diffx = 0;
                     diffz = 0;
 
-                    int dx = (int)random.Next(3) - 1;
-                    int dz = (int)random.Next(3) - 1;
+                    int dx, dz;
+                    getRandomDir(out dx, out dz);
 
                     if (o[posx, posz]) continue;
-                    if ((dx == 0 && dz == 0)
-                        || (dx == -1 && posx < 1)
+                    if ((dx == -1 && posx < 1)
                         || (dx == 1 && posx > o.GetLength(0) - 2)
                         || (dz == -1 && posz < 1)
                         || (dz == 1 && posz > o.GetLength(1) - 2)) continue;
 
-                    diffx += dx;
-                    diffz += dz;
+                    diffx = dx;
+                    diffz = dz;
                 }
 
                 o[posx, posz] = true;
@@ -181,9 +223,12 @@ namespace Tankkkos
             uint startz = 0;
 
             // finding the first occupied cell, to know where to start the upscaling from
-            for (uint i = 0; i < origin.GetLength(0); i++) { 
-                for( uint j= 0; j < origin.GetLength(0); j++) {
-                    if (origin[i, j]) {
+            for (uint i = 0; i < origin.GetLength(0); i++)
+            {
+                for (uint j = 0; j < origin.GetLength(0); j++)
+                {
+                    if (origin[i, j])
+                    {
                         startx = i;
                         startz = j;
                         break;
@@ -193,10 +238,10 @@ namespace Tankkkos
 
             // dfs graph
             HashSet<UintPair> used = new HashSet<UintPair>();
-            UintPairTree tree = DfsOnGrid(origin, ref used, startx, startz);
+            UintPairTree tree = DfsOnGrid(origin, ref used, startx, startz, 1);
 
             bool[,] o = new bool[origin.GetLength(0) * 2, origin.GetLength(0) * 2];
-            for( uint i = 0; i<o.GetLength(0); i++ ) { for( uint j = 0; j < o.GetLength(1); j++) {o[i, j] = false;}}
+            for (uint i = 0; i < o.GetLength(0); i++) { for (uint j = 0; j < o.GetLength(1); j++) { o[i, j] = false; } }
 
             fillOnGrid(ref o, tree);
 
@@ -204,37 +249,41 @@ namespace Tankkkos
 
         }
 
-        UintPairTree DfsOnGrid(bool[,] grid, ref HashSet<UintPair> used, uint x, uint z)
+        UintPairTree DfsOnGrid(bool[,] grid, ref HashSet<UintPair> used, uint x, uint z, uint depth)
         {
             used.Add(new UintPair(x, z));
 
-            UintPairTree o = new UintPairTree(new UintPair(x, z));
-
-            if (x > 0 && grid[x - 1, z] && !used.Contains(new UintPair(x - 1, z))) {
-                o.nodes.Add( DfsOnGrid(grid, ref used, x - 1, z) );
+            UintPairTree o = new UintPairTree(new UintPair(x, z), depth);
+            if (x > 0 && grid[x - 1, z] && !used.Contains(new UintPair(x - 1, z)))
+            {
+                o.nodes.Add(DfsOnGrid(grid, ref used, x - 1, z, depth + 1));
             }
-            if( x < grid.GetLength(0) - 1 && grid[x + 1, z] && !used.Contains(new UintPair(x + 1, z))) {
-                o.nodes.Add( DfsOnGrid(grid, ref used, x + 1, z) ); 
+            if (x < grid.GetLength(0) - 1 && grid[x + 1, z] && !used.Contains(new UintPair(x + 1, z)))
+            {
+                o.nodes.Add(DfsOnGrid(grid, ref used, x + 1, z, depth + 1));
             }
-            if(z > 0 && grid[x, z - 1] && !used.Contains(new UintPair(x, z - 1))) {
-                o.nodes.Add( DfsOnGrid(grid, ref used, x, z - 1));
+            if (z > 0 && grid[x, z - 1] && !used.Contains(new UintPair(x, z - 1)))
+            {
+                o.nodes.Add(DfsOnGrid(grid, ref used, x, z - 1, depth + 1));
             }
-            if(z < grid.GetLength(1) - 1 && grid[x, z + 1] && !used.Contains(new UintPair(x, z + 1))) {
-                o.nodes.Add( DfsOnGrid(grid, ref used, x, z + 1));
+            if (z < grid.GetLength(1) - 1 && grid[x, z + 1] && !used.Contains(new UintPair(x, z + 1)))
+            {
+                o.nodes.Add(DfsOnGrid(grid, ref used, x, z + 1, depth + 1));
             }
 
             return o;
 
         }
 
-        void fillOnGrid( ref bool[,] grid, UintPairTree tree)
+        void fillOnGrid(ref bool[,] grid, UintPairTree tree)
         {
 
             uint x = tree.thisPair.n1;
             uint z = tree.thisPair.n2;
 
-            grid[x*2, z*2] = true;
-            foreach (var node in tree.nodes) {
+            grid[x * 2, z * 2] = true;
+            foreach (var node in tree.nodes)
+            {
                 // we hope the best.... if passed with good args than it should be safe :D
                 int diffx = (int)node.thisPair.n1 - (int)x;
                 int diffz = (int)node.thisPair.n2 - (int)z;
@@ -320,6 +369,66 @@ namespace Tankkkos
             return blurred;
         }
 
+
+        void addParticlesToHeightMap(bool[,] occupied, ref float[,] heightMap)
+        {
+            
+            int seacrhRadius = 1;
+            
+            int offsetx = random.Next(occupied.GetLength(0));
+            int offsetz = random.Next(occupied.GetLength(1));
+
+            int x=0, z=0;
+            bool done = false;
+            while (!done) {
+
+                int xmin = offsetx - seacrhRadius;
+                int zmin = offsetz - seacrhRadius;
+                int zmax = offsetz + seacrhRadius;
+                int xmax = offsetx + seacrhRadius;
+                
+                // tesztelni out of bounds eseteket buzis
+
+                for( int i = xmin; i <= xmax; i++)
+                {
+                    for( int j = zmin; j <= zmax; j++)
+                    {
+                        if (i < 0 || i >= occupied.GetLength(0) || j < 0 || j >= occupied.GetLength(1)) continue;
+                        if (occupied[i, j])
+                        {
+                            x = i;
+                            z = j;
+                            done = true;
+                            break;
+                        }
+                    }
+                    if (done) break;
+                }
+
+                seacrhRadius++;
+            }
+            
+
+            var usedNodes = new HashSet<UintPair>();
+            var tree = DfsOnGrid(occupied, ref usedNodes, (uint)x, (uint)z, 4);
+
+            DFSAddHeight(ref heightMap, tree);
+
+        }
+
+        void DFSAddHeight(ref float[,] heightMap, UintPairTree tree)
+        {
+            uint x = tree.thisPair.n1;
+            uint z = tree.thisPair.n2;
+            heightMap[x, z] += 1f / MathF.Log2(tree.depth);
+            foreach (var node in tree.nodes)
+            {
+                DFSAddHeight(ref heightMap, node);
+            }
+        }
+
+
+
         float getLerpHeight(float x, float z)
         {
 
@@ -346,7 +455,12 @@ namespace Tankkkos
         }
 
 
-        public float getHeightAtPoint(float x, float z){
+        public uint getSize()
+        {
+            return (uint)HeightMap.GetLength(0);
+        }
+        public float getHeightAtPoint(float x, float z)
+        {
 
             x = x * HeightMap.GetLength(0) / 2 + HeightMap.GetLength(0) / 2;
             z = z * HeightMap.GetLength(1) / 2 + HeightMap.GetLength(1) / 2;
@@ -356,4 +470,5 @@ namespace Tankkkos
         }
 
     }
+
 }

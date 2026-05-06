@@ -25,6 +25,12 @@
 /processorParam:DebugMode=Auto
 /build:../Terrain.fx;Terrain.fx
 
+#begin ../Water.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:../Water.fx;Water.fx
+
 #begin grass1.jpg
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -91,4 +97,16 @@
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
 /build:tank.fbx
+
+#begin wave2.dds
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=False
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:wave2.dds
 

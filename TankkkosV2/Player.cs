@@ -256,7 +256,7 @@ namespace Tankkkos
             }
 
 
-            float movementVelocity = 1200f;
+            float movementVelocity = 600f;
             if (onGround)
             {
                 if (cntrForward)

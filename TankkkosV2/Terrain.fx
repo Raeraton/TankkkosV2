@@ -7,6 +7,8 @@ float sunShine;
 
 float3 CamPos;
 
+bool renderUnderWater;
+
 
 texture2D grassTex;
 sampler grassTexSampler = sampler_state
@@ -76,7 +78,7 @@ VSO VS(VSI input)
 
 float4 readTex(float3 worldPos, float3 normal, float2 texPos)
 {
-    if (worldPos.y < 30)
+    if (worldPos.y < 5)
     {
         return float4(tex2D(sandTexSampler, texPos).rgb, 16);
     }
@@ -109,6 +111,12 @@ float2 getPB(float3 normal, float3 worldPos, float shininess)
 
 float4 PS(VSO input) : COLOR
 {
+    
+    if( !renderUnderWater)
+    {
+        clip(input.worldPos.y);
+    }
+    
     float3 normal = normalize(input.normal.xyz);
     
     float4 texOut = readTex(input.worldPos, normal, input.tex);
