@@ -239,10 +239,12 @@ namespace Tankkkos
 
         Vector3 middlePoint = new Vector3(0, 0, 0);
 
-        DLAMountain mountain;
+        public DLAMountain mountain;
         float mountainScaleW = 1000f;
         public float MaxHeight = 100f;
-    
+
+        float waterLevel = 0.1f;
+
 
         Terrain_part middle;
         TerrainLayer[] layers;
@@ -253,7 +255,7 @@ namespace Tankkkos
 
             this.resolution = resolution;
 
-            this.mountain = new DLAMountain(69, 5);
+            this.mountain = new DLAMountain(69, 7);
 
             effect.Parameters["sunPos"].SetValue(sun.Position);
             effect.Parameters["sunShine"].SetValue(sun.Power);
@@ -276,6 +278,7 @@ namespace Tankkkos
         {
 
             float scaleLen = (new Vector2(middle.scale.X, middle.scale.Z)).Length();
+            playerPos.Y = 0;
             if (scaleLen < (middlePoint - playerPos).Length()) {
                 middlePoint = playerPos;
                 middlePoint.Y = 0;
@@ -296,8 +299,9 @@ namespace Tankkkos
             }
         }
 
-        public void Draw(Camera cam)
+        public void Draw(Camera cam, bool renderUnderWater)
         {
+            effect.Parameters["renderUnderWater"].SetValue(renderUnderWater);
             middle.Draw(cam);
             for (uint i = 0; i < layers.Length; i++) { 
                 layers[i].Draw(cam);
@@ -311,7 +315,7 @@ namespace Tankkkos
 
             float height = mountain.getHeightAtPoint(x, z);
 
-            return height;
+            return height - waterLevel;
         }
 
         public float GetHeightAtPointWorld(float x, float z)

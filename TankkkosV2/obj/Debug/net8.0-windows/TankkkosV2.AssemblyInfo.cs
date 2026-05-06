@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TankkkosV2")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2765e8d0414b267f62799029462edbd277aea796")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+44f420635c7a350c315af59d5d01c8e10053dcab")]
 [assembly: System.Reflection.AssemblyProductAttribute("TankkkosV2")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TankkkosV2")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

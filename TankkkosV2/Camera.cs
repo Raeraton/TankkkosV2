@@ -16,6 +16,16 @@ namespace Tankkkos
         public Matrix View => Matrix.CreateLookAt(Position, Position + Direction, Up);
         public Matrix Projection => Matrix.CreatePerspectiveFieldOfView(1, AspectRatio, 1, 1010);
 
+        public Camera GetReflection(Vector3 normal)
+        {
+            return new Camera
+            {
+                Position = Vector3.Reflect(Position, normal),
+                Direction = Vector3.Reflect(Direction, normal),
+                Up = Up,
+                AspectRatio = AspectRatio
+            };
+        }
 
         public static readonly Camera Main = new();
     }
