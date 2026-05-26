@@ -2,14 +2,15 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
+using System.Collections.Generic;
 
 namespace Tankkkos
 {
     internal class Player : Body
     {
 
-        bool cntrForward = false, cntrBackward = false, cntrLeft = false, cntrRight = false;
-
+        bool cntrForward = false, cntrBackward = false, cntrLeft = false, cntrRight = false, cntrShoot = false;
+        bool dontShoot = false;
 
         Model model;
         Vector3 modelDirection = Vector3.Zero;
@@ -179,6 +180,9 @@ namespace Tankkkos
             cntrLeft = ks.IsKeyDown(Keys.A);
             cntrRight = ks.IsKeyDown(Keys.D);
 
+            cntrShoot = ks.IsKeyDown(Keys.Space);
+            if(!cntrShoot) dontShoot = false;
+
         }
 
         private void updateCamera() 
@@ -196,12 +200,27 @@ namespace Tankkkos
 
         }
 
-        public void Step()
+        public void Step( ref List<Bullet> bullets )
         {
             ApplyForces();
             for (int i = 0; i < verlets.Length; i++)
                 verlets[i].Step();
             ApplyConstraints();
+
+            if( cntrShoot)
+            {
+                var bulletPos = Position + Vector3.Normalize(Direction) * 2f;
+                bulletPos.Y = Position.Y + 2f;
+                var bulletVel = Vector3.Normalize(Direction) * 20f + Vector3.Normalize(Up) * 5f;
+
+                if (cntrShoot && !dontShoot)
+                {
+                    bullets.Add(new Bullet(dev, new Random(), terrain, bulletPos, bulletVel));
+                    dontShoot = true;
+                }
+
+            }
+
         }
 
         private void ApplyForces()
@@ -242,7 +261,7 @@ namespace Tankkkos
                     verlets[i].AddSqFriction(Vector3.Up, 10);
                 }
 
-                if (onGround)
+                if (onGround &&false)
                 {
                     verlets[i].AddSqFriction(d, 10f);
                     verlets[i].AddSqFriction(r, 10f);
@@ -250,13 +269,13 @@ namespace Tankkkos
                 }else
                 {
                     verlets[i].AddSqFriction(d, 0.1f);
-                    verlets[i].AddSqFriction(r, 0.1f);
+                    verlets[i].AddSqFriction(r, 1f);
                     verlets[i].AddSqFriction(u, 0.1f);
                 }
             }
 
 
-            float movementVelocity = 600f;
+            float movementVelocity = 20f;
             if (onGround)
             {
                 if (cntrForward)

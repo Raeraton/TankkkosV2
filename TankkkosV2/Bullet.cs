@@ -6,6 +6,9 @@ namespace Tankkkos
 {
     internal class Bullet
     {
+
+        static Vector3 G = new Vector3(0, -9.81f, 0);
+
         ulong id;
         public Vector3 Position;
         Vector3 Velocity;
@@ -31,7 +34,7 @@ namespace Tankkkos
 
             Position += Velocity * deltaTime;
 
-            Velocity += new Vector3(0, -9.81f, 0) * deltaTime;
+            Velocity += G * deltaTime;
 
             return TestForCollission();
 

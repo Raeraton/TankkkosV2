@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Diagnostics;
 using System.DirectoryServices;
+using System.Threading;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace Tankkkos
@@ -112,6 +113,37 @@ namespace Tankkkos
             dev.DrawIndexedPrimitives(PrimitiveType.TriangleStrip, 0, 0, indexBuffer.IndexCount - 2);
         }
 
+        public void DrawHeight(Camera cam)
+        {
+            var dev = vertexBuffer.GraphicsDevice;
+            dev.SetVertexBuffer(vertexBuffer);
+            dev.Indices = indexBuffer;
+
+            effect.Parameters["CamPos"].SetValue(cam.Position);
+
+            effect.Parameters["World"].SetValue(Matrix.CreateScale(scale.X, MaxHeight, scale.Z) * Matrix.CreateTranslation(middle));
+
+            effect.Parameters["ViewProj"].SetValue(cam.View * cam.Projection);
+
+            effect.CurrentTechnique.Passes[1].Apply();
+            dev.DrawIndexedPrimitives(PrimitiveType.TriangleStrip, 0, 0, indexBuffer.IndexCount - 2);
+        }
+
+        public void DrawRefraction(Camera cam)
+        {
+            var dev = vertexBuffer.GraphicsDevice;
+            dev.SetVertexBuffer(vertexBuffer);
+            dev.Indices = indexBuffer;
+
+            effect.Parameters["CamPos"].SetValue(cam.Position);
+
+            effect.Parameters["World"].SetValue(Matrix.CreateScale(scale.X, MaxHeight, scale.Z) * Matrix.CreateTranslation(middle));
+
+            effect.Parameters["ViewProj"].SetValue(cam.View * cam.Projection);
+
+            effect.CurrentTechnique.Passes[2].Apply();
+            dev.DrawIndexedPrimitives(PrimitiveType.TriangleStrip, 0, 0, indexBuffer.IndexCount - 2);
+        }
         public void Dispose()
         {
             vertexBuffer.Dispose();
@@ -212,6 +244,30 @@ namespace Tankkkos
             West.Draw(camera);
             NorthWest.Draw(camera);
         }
+        public void DrawHeight(Camera camera)
+        {
+            North.DrawHeight(camera);
+            NorthEast.DrawHeight(camera);
+            East.DrawHeight(camera);
+            SouthEast.DrawHeight(camera);
+            South.DrawHeight(camera);
+            SouthWest.DrawHeight(camera);
+            West.DrawHeight(camera);
+            NorthWest.DrawHeight(camera);
+        }
+
+        public void DrawRefraction(Camera camera)
+        {
+            North.DrawRefraction(camera);
+            NorthEast.DrawRefraction(camera);
+            East.DrawRefraction(camera);
+            SouthEast.DrawRefraction(camera);
+            South.DrawRefraction(camera);
+            SouthWest.DrawRefraction(camera);
+            West.DrawRefraction(camera);
+            NorthWest.DrawRefraction(camera);
+        }
+
 
         public void ForEach( Action<Terrain_part> action) {
             action(North);
@@ -226,6 +282,118 @@ namespace Tankkkos
 
     }
 
+
+    class TerrainPartHandler {
+        Terrain_part[] middle;
+        TerrainLayer[][] layers;
+
+        Mutex loadingMtx = new Mutex();
+
+        int renderIdx = 0;
+
+        Terrain_part RenderMiddle => middle[renderIdx & 1];
+        TerrainLayer[] RenderLayers => layers[renderIdx & 1];
+
+        Terrain_part LoadingMiddle => middle[(renderIdx + 1) & 1];
+        TerrainLayer[] LoadingLayers => layers[(renderIdx + 1) & 1];
+
+
+        public TerrainPartHandler(GraphicsDevice dev, Terrain terr, Effect effect, Texture2D grassTex, Texture2D rockTex, Texture2D sandTex, PointLight sun, int resolution, Vector3 closest_scale, uint layerCount, float MaxHeight, Vector3 middlePoint)
+        {
+
+            middle = new Terrain_part[2];
+            layers = new TerrainLayer[2][];
+
+            middle[0] = new Terrain_part(dev, effect, terr, resolution, resolution, MaxHeight, 10f,
+                middlePoint, closest_scale);
+
+            layers[0] = new TerrainLayer[layerCount];
+            for (uint i = 0; i < layerCount; i++)
+            {
+                layers[0][i] = new TerrainLayer(dev, effect, terr, resolution, MaxHeight, 10f, middlePoint, closest_scale, i);
+            }
+
+            middle[1] = new Terrain_part(dev, effect, terr, resolution, resolution, MaxHeight, 10f,
+                middlePoint, closest_scale);
+
+            layers[1] = new TerrainLayer[layerCount];
+            for (uint i = 0; i < layerCount; i++)
+            {
+                layers[1][i] = new TerrainLayer(dev, effect, terr, resolution, MaxHeight, 10f, middlePoint, closest_scale, i);
+            }
+
+        }
+
+        public bool NeedsUpdate(Vector3 playerPos, Vector3 middlePoint, out Vector3 newMiddlePoint)
+        {
+
+            float scaleLen = (new Vector2(RenderMiddle.scale.X, RenderMiddle.scale.Z)).Length();
+            playerPos.Y = 0;
+            if (scaleLen < (middlePoint - playerPos).Length())
+            {
+                middlePoint = playerPos;
+                middlePoint.Y = 0;
+                newMiddlePoint = middlePoint;
+                return true;
+            }
+
+            newMiddlePoint = Vector3.Zero;
+            return false;
+        }
+        public void update( GraphicsDevice dev, Terrain terr, Vector3 middlePoint, int resolution)
+        {
+            loadingMtx.WaitOne();
+
+            Vector3 closest_scale = LoadingMiddle.scale;
+
+            LoadingMiddle.middle = LoadingMiddle.baseMiddle + middlePoint;
+            LoadingMiddle.Update(dev, terr, resolution, resolution);
+
+            for (uint i = 0; i < LoadingLayers.Length; i++)
+            {
+                LoadingLayers[i].ForEach(part => {
+                    part.middle = part.baseMiddle + middlePoint;
+                    part.Update(dev, terr, resolution, resolution);
+                });
+            }
+
+            loadingMtx.ReleaseMutex();
+        }
+
+        public void swap()
+        {
+            renderIdx = (renderIdx + 1) & 1;
+        }
+
+
+        public void Draw(Camera cam)
+        {
+            RenderMiddle.Draw(cam);
+            for (uint i = 0; i < RenderLayers.Length; i++)
+            {
+                RenderLayers[i].Draw(cam);
+            }
+        }
+
+        public void DrawHeight(Camera cam)
+        {
+            RenderMiddle.DrawHeight(cam);
+            for (uint i = 0; i < RenderLayers.Length; i++)
+            {
+                RenderLayers[i].DrawHeight(cam);
+            }
+        }
+
+        public void DrawRefraction(Camera cam)
+        {
+            RenderMiddle.DrawRefraction(cam);
+            for (uint i = 0; i < RenderLayers.Length; i++)
+            {
+                RenderLayers[i].DrawRefraction(cam);
+            }
+        }
+
+    }
 
     internal class Terrain
     {
@@ -245,9 +413,12 @@ namespace Tankkkos
 
         float waterLevel = 0.1f;
 
+        
+
 
         Terrain_part middle;
         TerrainLayer[] layers;
+        TerrainPartHandler terrainPartHandler;
         public Terrain(GraphicsDevice dev, Effect effect, Texture2D grassTex, Texture2D rockTex, Texture2D sandTex, PointLight sun, int resolution, Vector3 closest_scale, uint layerCount)
         {
             this.dev = dev;
@@ -255,7 +426,7 @@ namespace Tankkkos
 
             this.resolution = resolution;
 
-            this.mountain = new DLAMountain(69, 7);
+            this.mountain = new DLAMountain(64, 8);
 
             effect.Parameters["sunPos"].SetValue(sun.Position);
             effect.Parameters["sunShine"].SetValue(sun.Power);
@@ -263,49 +434,36 @@ namespace Tankkkos
             effect.Parameters["sandTex"].SetValue(sandTex);
             effect.Parameters["rockTex"].SetValue(rockTex);
 
-            middle = new Terrain_part(dev, effect, this, resolution, resolution, MaxHeight, 10f,
-                middlePoint, closest_scale);
-
-            layers = new TerrainLayer[layerCount];
-            for (uint i = 0; i < layerCount; i++)
-            {
-                layers[i] = new TerrainLayer(dev, effect, this, resolution, MaxHeight, 10f, middlePoint, closest_scale, i);
-            }
+            terrainPartHandler = new TerrainPartHandler(dev, this, effect, grassTex, rockTex, sandTex, sun, resolution, closest_scale, layerCount, MaxHeight, middlePoint);
 
         }
 
         public void Update( Vector3 playerPos)
         {
+            Vector3 newMiddlePoint;
+            if (!terrainPartHandler.NeedsUpdate(playerPos, middlePoint, out newMiddlePoint)) return;
 
-            float scaleLen = (new Vector2(middle.scale.X, middle.scale.Z)).Length();
-            playerPos.Y = 0;
-            if (scaleLen < (middlePoint - playerPos).Length()) {
-                middlePoint = playerPos;
-                middlePoint.Y = 0;
-                update(middle.scale);
-            }
-        }
-        void update(Vector3 closest_scale)
-        {
+            middlePoint = newMiddlePoint;
+            new Thread(() => {
+                terrainPartHandler.update(dev, this, middlePoint, resolution);
+                terrainPartHandler.swap();
+            }).Start();
 
-            middle.middle = middle.baseMiddle + middlePoint;
-            middle.Update(dev, this, resolution, resolution);
-            
-            for (uint i = 0; i < layers.Length; i++) { 
-                layers[i].ForEach( part => {
-                    part.middle = part.baseMiddle + middlePoint;
-                    part.Update(dev, this, resolution, resolution);
-                    } );
-            }
         }
 
-        public void Draw(Camera cam, bool renderUnderWater)
+        public void Draw(Camera cam)
         {
-            effect.Parameters["renderUnderWater"].SetValue(renderUnderWater);
-            middle.Draw(cam);
-            for (uint i = 0; i < layers.Length; i++) { 
-                layers[i].Draw(cam);
-            }
+            terrainPartHandler.Draw(cam);
+        }
+
+        public void DrawHeight(Camera cam)
+        {
+            terrainPartHandler.DrawHeight(cam);
+        }
+
+        public void DrawRefraction(Camera cam)
+        {
+            terrainPartHandler.DrawRefraction(cam);
         }
 
         public float GetHeightAtPoint(float x, float z)

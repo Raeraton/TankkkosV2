@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\rovac\\Documents\\gameDev\\tankos\\TankkkosV2\\TankkkosV2\\TankkkosV2.csproj": {}
+    "C:\\Users\\rovac\\OneDrive\\Documentos\\GitHub\\TankkkosV2\\TankkkosV2\\TankkkosV2.csproj": {}
   },
   "projects": {
-    "C:\\Users\\rovac\\Documents\\gameDev\\tankos\\TankkkosV2\\TankkkosV2\\TankkkosV2.csproj": {
+    "C:\\Users\\rovac\\OneDrive\\Documentos\\GitHub\\TankkkosV2\\TankkkosV2\\TankkkosV2.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\rovac\\Documents\\gameDev\\tankos\\TankkkosV2\\TankkkosV2\\TankkkosV2.csproj",
+        "projectUniqueName": "C:\\Users\\rovac\\OneDrive\\Documentos\\GitHub\\TankkkosV2\\TankkkosV2\\TankkkosV2.csproj",
         "projectName": "TankkkosV2",
-        "projectPath": "C:\\Users\\rovac\\Documents\\gameDev\\tankos\\TankkkosV2\\TankkkosV2\\TankkkosV2.csproj",
+        "projectPath": "C:\\Users\\rovac\\OneDrive\\Documentos\\GitHub\\TankkkosV2\\TankkkosV2\\TankkkosV2.csproj",
         "packagesPath": "C:\\Users\\rovac\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\rovac\\Documents\\gameDev\\tankos\\TankkkosV2\\TankkkosV2\\obj\\",
+        "outputPath": "C:\\Users\\rovac\\OneDrive\\Documentos\\GitHub\\TankkkosV2\\TankkkosV2\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -46,7 +46,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "10.0.200"
+        "SdkAnalysisLevel": "10.0.300"
       },
       "frameworks": {
         "net8.0-windows": {
@@ -81,7 +81,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

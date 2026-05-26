@@ -4,15 +4,15 @@
   <Platform>Windows</Platform>
   <Config />
   <SourceFiles>
-    <File>C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/../Player.fx</File>
-    <File>C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/../Terrain.fx</File>
-    <File>C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/../Water.fx</File>
-    <File>C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/grass1.jpg</File>
-    <File>C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/rock1.jpg</File>
-    <File>C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/sand1.jpg</File>
-    <File>C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/skybox.jpg</File>
-    <File>C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/tank.fbx</File>
-    <File>C:/Users/rovac/Documents/gameDev/tankos/TankkkosV2/TankkkosV2/Content/wave2.dds</File>
+    <File>C:/Users/rovac/OneDrive/Documentos/GitHub/TankkkosV2/TankkkosV2/Content/../Player.fx</File>
+    <File>C:/Users/rovac/OneDrive/Documentos/GitHub/TankkkosV2/TankkkosV2/Content/../Terrain.fx</File>
+    <File>C:/Users/rovac/OneDrive/Documentos/GitHub/TankkkosV2/TankkkosV2/Content/../Water.fx</File>
+    <File>C:/Users/rovac/OneDrive/Documentos/GitHub/TankkkosV2/TankkkosV2/Content/grass1.jpg</File>
+    <File>C:/Users/rovac/OneDrive/Documentos/GitHub/TankkkosV2/TankkkosV2/Content/rock1.jpg</File>
+    <File>C:/Users/rovac/OneDrive/Documentos/GitHub/TankkkosV2/TankkkosV2/Content/sand1.jpg</File>
+    <File>C:/Users/rovac/OneDrive/Documentos/GitHub/TankkkosV2/TankkkosV2/Content/skybox.jpg</File>
+    <File>C:/Users/rovac/OneDrive/Documentos/GitHub/TankkkosV2/TankkkosV2/Content/tank.fbx</File>
+    <File>C:/Users/rovac/OneDrive/Documentos/GitHub/TankkkosV2/TankkkosV2/Content/wave2.dds</File>
   </SourceFiles>
   <DestFiles>
     <File>Player.fx</File>

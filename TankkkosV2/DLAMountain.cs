@@ -58,6 +58,9 @@ namespace Tankkkos
 
         Random random;
 
+        float rudgedness = 1.35f;
+        float peakRadius = 0.3f;
+
 
         int randomBits = 0;
         int randomBitsIdx = 255;
@@ -117,7 +120,7 @@ namespace Tankkkos
             {
                 bool[,] tooccupied;
                 float[,] thm;
-                addLayer(occupied, hm, out tooccupied, out thm);
+                addLayer( 1f / MathF.Pow(rudgedness, i), occupied, hm, out tooccupied, out thm);
                 occupied = tooccupied;
                 hm = thm;
             }
@@ -142,13 +145,13 @@ namespace Tankkkos
 
             hm = upscaleHeightMap(hm);
             hm = BlurHeightMap(hm);
-
+                    
             HeightMap = hm;
 
 
         }
 
-        void addLayer(bool[,] ioccupied, float[,] ihm, out bool[,] ooccupied, out float[,] ohm)
+        void addLayer( float layerHeight, bool[,] ioccupied, float[,] ihm, out bool[,] ooccupied, out float[,] ohm)
         {
             // should be a nxn matrix
             uint width = (uint)ioccupied.GetLength(0) * 2;
@@ -158,9 +161,7 @@ namespace Tankkkos
             ohm = BlurHeightMap(upscaleHeightMap(ihm));
 
             // add height to the new particles
-            addParticlesToHeightMap(ooccupied, ref ohm);
-
-            ohm = BlurHeightMap(ohm);
+            addParticlesToHeightMap(ooccupied, ref ohm, layerHeight);
 
         }
 
@@ -236,9 +237,9 @@ namespace Tankkkos
                 }
             }
 
-            // dfs graph
+            // bfs graph
             HashSet<UintPair> used = new HashSet<UintPair>();
-            UintPairTree tree = DfsOnGrid(origin, ref used, startx, startz, 1);
+            UintPairTree tree = BfsOnGrid(origin, ref used, startx, startz, 1);
 
             bool[,] o = new bool[origin.GetLength(0) * 2, origin.GetLength(0) * 2];
             for (uint i = 0; i < o.GetLength(0); i++) { for (uint j = 0; j < o.GetLength(1); j++) { o[i, j] = false; } }
@@ -272,7 +273,49 @@ namespace Tankkkos
             }
 
             return o;
+        }
 
+        UintPairTree BfsOnGrid(bool[,] grid, ref HashSet<UintPair> used, uint x, uint z, uint depth)
+        {
+            Queue<UintPairTree> queue = new Queue<UintPairTree>();
+            UintPairTree root = new UintPairTree(new UintPair(x, z), depth);
+            queue.Enqueue(root);
+            used.Add(new UintPair(x, z));
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                uint cx = current.thisPair.n1;
+                uint cz = current.thisPair.n2;
+                if (cx > 0 && grid[cx - 1, cz] && !used.Contains(new UintPair(cx - 1, cz)))
+                {
+                    var child = new UintPairTree(new UintPair(cx - 1, cz), current.depth + 1);
+                    current.nodes.Add(child);
+                    queue.Enqueue(child);
+                    used.Add(new UintPair(cx - 1, cz));
+                }
+                if (cx < grid.GetLength(0) - 1 && grid[cx + 1, cz] && !used.Contains(new UintPair(cx + 1, cz)))
+                {
+                    var child = new UintPairTree(new UintPair(cx + 1, cz), current.depth + 1);
+                    current.nodes.Add(child);
+                    queue.Enqueue(child);
+                    used.Add(new UintPair(cx + 1, cz));
+                }
+                if (cz > 0 && grid[cx, cz - 1] && !used.Contains(new UintPair(cx, cz - 1)))
+                {
+                    var child = new UintPairTree(new UintPair(cx, cz - 1), current.depth + 1);
+                    current.nodes.Add(child);
+                    queue.Enqueue(child);
+                    used.Add(new UintPair(cx, cz - 1));
+                }
+                if (cz < grid.GetLength(1) - 1 && grid[cx, cz + 1] && !used.Contains(new UintPair(cx, cz + 1)))
+                {
+                    var child = new UintPairTree(new UintPair(cx, cz + 1), current.depth + 1);
+                    current.nodes.Add(child);
+                    queue.Enqueue(child);
+                    used.Add(new UintPair(cx, cz + 1));
+                }
+            }
+            return root;
         }
 
         void fillOnGrid(ref bool[,] grid, UintPairTree tree)
@@ -370,13 +413,14 @@ namespace Tankkkos
         }
 
 
-        void addParticlesToHeightMap(bool[,] occupied, ref float[,] heightMap)
+        void addParticlesToHeightMap(bool[,] occupied, ref float[,] heightMap, float heightMultiplier)
         {
             
             int seacrhRadius = 1;
-            
-            int offsetx = random.Next(occupied.GetLength(0));
-            int offsetz = random.Next(occupied.GetLength(1));
+
+            int offsetx = random.Next( (int)(occupied.GetLength(0) * (1f - peakRadius)) / 2, (int)(occupied.GetLength(0) * (1f + peakRadius) / 2) );
+            int offsetz = random.Next((int)(occupied.GetLength(0) * (1f - peakRadius)) / 2, (int)(occupied.GetLength(0) * (1f + peakRadius) / 2));
+
 
             int x=0, z=0;
             bool done = false;
@@ -410,21 +454,56 @@ namespace Tankkkos
             
 
             var usedNodes = new HashSet<UintPair>();
-            var tree = DfsOnGrid(occupied, ref usedNodes, (uint)x, (uint)z, 4);
+            var tree = BfsOnGrid(occupied, ref usedNodes, (uint)x, (uint)z, 4);
 
-            DFSAddHeight(ref heightMap, tree);
+            BFSAddHeight(ref heightMap, tree, heightMultiplier);
 
         }
 
-        void DFSAddHeight(ref float[,] heightMap, UintPairTree tree)
+        void DFSAddHeight(ref float[,] heightMap, UintPairTree tree, float heightMultiplier)
         {
             uint x = tree.thisPair.n1;
             uint z = tree.thisPair.n2;
-            heightMap[x, z] += 1f / MathF.Log2(tree.depth);
+            heightMap[x, z] += heightMultiplier / MathF.Log2(tree.depth);
             foreach (var node in tree.nodes)
             {
-                DFSAddHeight(ref heightMap, node);
+                DFSAddHeight(ref heightMap, node, heightMultiplier);
             }
+        }
+
+        void BFSAddHeight(ref float[,] heightMap, UintPairTree tree, float heightMultiplier)
+        {
+
+            HashSet<UintPairTree> done = new HashSet<UintPairTree>(); // elvileg nem szükséges, mert fa, de legyen csak biztonság kedvéért  Nem lassít jelentősen
+            HashSet<UintPairTree> nodes = new HashSet<UintPairTree>();
+            HashSet<UintPairTree> nextNodes = new HashSet<UintPairTree>();
+
+            nodes.Add(tree);
+
+            while (nodes.Count > 0) {
+
+                foreach(var node in nodes)
+                {
+
+                    uint x = node.thisPair.n1;
+                    uint z = node.thisPair.n2;
+                    heightMap[x, z] += heightMultiplier / MathF.Log2(node.depth);
+
+                    done.Add(node);
+                    foreach (var child in node.nodes)
+                    {
+                        if( !done.Contains(child))
+                        {
+                            nextNodes.Add(child);
+                        }
+                    }
+
+                }
+
+                nodes = nextNodes;
+                nextNodes = new HashSet<UintPairTree>();
+            }
+
         }
 
 
@@ -467,6 +546,14 @@ namespace Tankkkos
 
             return getLerpHeight(x, z);
 
+        }
+
+        public void DEBUG_GET_COORD(float x, float z, out float coordX, out float coordZ)
+        {
+            Console.WriteLine($"DEBUG_GET_COORD called with x: {x}, z: {z}");
+            Console.WriteLine($"HeightMap size: {HeightMap.GetLength(0)} x {HeightMap.GetLength(1)}");
+            coordX = x * HeightMap.GetLength(0) / 2 + HeightMap.GetLength(0) / 2;
+            coordZ = z * HeightMap.GetLength(1) / 2 + HeightMap.GetLength(1) / 2;
         }
 
     }

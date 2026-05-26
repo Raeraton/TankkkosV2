@@ -29,7 +29,7 @@ namespace TankkkosV2
             this.effect = effect;
             effect.Parameters["NormalMap"].SetValue(normalMap);
         }
-        public void Draw(Camera cam, RenderTarget2D waterReflection,
+        public void Draw(Camera cam, RenderTarget2D waterReflection, RenderTarget2D waterRefraction, RenderTarget2D heightMap,
             GameTime gameTime, Vector3 sunDir)
         {
             var dev = vertexBuffer.GraphicsDevice;
@@ -39,7 +39,11 @@ namespace TankkkosV2
                 Matrix.CreateTranslation(new Vector3(cam.Position.X, 0, cam.Position.Z));
             effect.Parameters["World"].SetValue(world);
             effect.Parameters["WorldViewProj"].SetValue(world * cam.View * cam.Projection);
+
             effect.Parameters["ReflectionMap"].SetValue(waterReflection);
+            effect.Parameters["RefractionMap"].SetValue(waterRefraction);
+            effect.Parameters["HeightMap"].SetValue(heightMap);
+
             effect.Parameters["Time"].SetValue((float)gameTime.TotalGameTime.TotalSeconds);
             effect.Parameters["CamPos"].SetValue(cam.Position);
             effect.Parameters["SunDir"].SetValue(sunDir);
