@@ -30,6 +30,9 @@ namespace Tankkkos
 
         List<Bullet> my_bullets;
 
+        List<Enemy> Enemies;
+        Model EnemyModel;
+
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -76,7 +79,7 @@ namespace Tankkkos
 
             terrain = new Terrain(GraphicsDevice, Content.Load<Effect>("Terrain"),
                 Content.Load<Texture2D>("grass1"), Content.Load<Texture2D>("rock1"), Content.Load<Texture2D>("sand1"),
-                sun, 64, new Vector3(16f, 1f, 16f), 4 );
+                sun, 128, new Vector3(16f, 1f, 16f), 4 );
 
             skyBox = new SkyBox(GraphicsDevice, Content.Load<Texture2D>("skybox"));
 
@@ -87,16 +90,25 @@ namespace Tankkkos
                 Content.Load<Effect>("Water"));
 
             my_bullets = new List<Bullet>();
+            Enemies = new List<Enemy>();
+            EnemyModel = Content.Load<Model>("tank");
 
             ghostCamera = new GhostCamera( new Camera() );
 
         }
 
 
+        uint dfjgnodnsg = 0;
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
+
+            if(dfjgnodnsg++ > 600) 
+            {
+                dfjgnodnsg = 0;
+                Enemies.Add(new Enemy(GraphicsDevice, terrain, player.Position + Vector3.Up * 10, EnemyModel, sun));
+            }
 
             var delataTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             
@@ -126,6 +138,11 @@ namespace Tankkkos
                 }
                 return false;
             });
+
+            foreach( var enemy in Enemies)
+            {
+                enemy.Step();
+            }
 
             terrain.UpdateTerrain(player.Position);
             terrain.Update(player.Position);
@@ -187,6 +204,11 @@ namespace Tankkkos
 
             foreach (var b in my_bullets)
                 b.Draw(activeCamera);
+
+            foreach(var enemy in Enemies)
+            {
+                enemy.Draw(activeCamera);
+            }
 
             terrain.Draw(activeCamera);
 

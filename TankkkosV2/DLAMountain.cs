@@ -102,7 +102,6 @@ namespace Tankkkos
         public DLAMountain(int seed, uint res)
         {
             generate(seed, res);
-
         }
 
         void generate(int seed, uint iterations)
@@ -548,13 +547,6 @@ namespace Tankkkos
 
         }
 
-        public void DEBUG_GET_COORD(float x, float z, out float coordX, out float coordZ)
-        {
-            Console.WriteLine($"DEBUG_GET_COORD called with x: {x}, z: {z}");
-            Console.WriteLine($"HeightMap size: {HeightMap.GetLength(0)} x {HeightMap.GetLength(1)}");
-            coordX = x * HeightMap.GetLength(0) / 2 + HeightMap.GetLength(0) / 2;
-            coordZ = z * HeightMap.GetLength(1) / 2 + HeightMap.GetLength(1) / 2;
-        }
 
     }
 

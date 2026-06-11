@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
@@ -91,7 +92,6 @@ namespace Tankkkos
                 new Verlet( new Vector3( -l, 0, w ) + position),
                 new Verlet( new Vector3( -l, 0, -w ) + position ),
                 new Verlet( new Vector3( 0, 1, 0 ) + position),
-                new Verlet( new Vector3( 0, -1, 0 ) + position)
             ];
             GenerateFullyConnectedBody();
 
@@ -241,85 +241,89 @@ namespace Tankkkos
         private void ApplyForces()
         {
 
-            float topVertexHeight = terrain.GetHeightAtPointWorld(verlets[4].Pos.X, verlets[4].Pos.Z);
-            float bottomVertexHeight = terrain.GetHeightAtPointWorld(verlets[5].Pos.X, verlets[5].Pos.Z);
-            bool inGround = verlets[4].Pos.Y < topVertexHeight && verlets[5].Pos.Y < bottomVertexHeight;
-            bool onGround = (verlets[4].Pos.Y < topVertexHeight || verlets[5].Pos.Y < bottomVertexHeight) && !inGround;
-
             // Gravitáció
             Vector3 g = new Vector3(0, -9.81f, 0);
             for (int i = 0; i < verlets.Length; i++)
                 verlets[i].Acc = g;
 
-            // Felhajtó erő
-            for (int i = 0; i < 4; i++)
-            {
-                float height = verlets[i].Pos.Y;
-                float terrainHeight = terrain.GetHeightAtPointWorld(verlets[i].Pos.X, verlets[i].Pos.Z);
-                if (height < terrainHeight)
-                    verlets[i].Acc += Vector3.Up * Math.Min((terrainHeight - height) * 100, 200);
-            }
-
-
             Vector3 d = Vector3.Normalize(Direction);
             Vector3 r = Vector3.Normalize(Right);
             Vector3 u = Vector3.Normalize(Up);
 
-            for (int i = 0; i < 4; i++)
-            {
-                
-                float height = verlets[i].Pos.Y;
-                float terrainHeight = terrain.GetHeightAtPointWorld(verlets[i].Pos.X, verlets[i].Pos.Z);
-                if (height < terrainHeight)
-                {
-                    verlets[i].Acc += Vector3.Up * Math.Min((terrainHeight - height) * 50, 200);
-                    verlets[i].AddSqFriction(Vector3.Up, 10);
-                }
 
-                if (onGround &&false)
+            // ground
+            for( uint i=0;  i<verlets.Length;  i++)
+            {
+                float terrainHeight = terrain.GetHeightAtPointWorld(verlets[i].Pos.X, verlets[i].Pos.Z );
+                if(verlets[i].Pos.Y <= terrainHeight)
                 {
-                    verlets[i].AddSqFriction(d, 10f);
-                    verlets[i].AddSqFriction(r, 10f);
-                    verlets[i].AddSqFriction(u, 10f);
-                }else
-                {
-                    verlets[i].AddSqFriction(d, 0.1f);
-                    verlets[i].AddSqFriction(r, 1f);
-                    verlets[i].AddSqFriction(u, 0.1f);
+                    Vector3 terrainNormal = terrain.GetNormalAtPoint(verlets[i].Pos.X, verlets[i].Pos.Z);
+                    verlets[i].pPos.Y = verlets[i].Pos.Y - (terrainHeight - verlets[i].Pos.Y - 0.1f);
                 }
             }
 
 
-            float movementVelocity = 20f;
-            if (onGround)
+            // drag
+            bool[] verletOnGround = { false, false, false, false };
+            for (uint i = 0; i < verlets.Length; i++)
             {
-                if (cntrForward)
-                {
-                    verlets[0].Acc += d * movementVelocity;
-                    verlets[1].Acc += d * movementVelocity;
-                    verlets[2].Acc += d * movementVelocity;
-                    verlets[3].Acc += d * movementVelocity;
+
+                float terrainHeight = terrain.GetHeightAtPointWorld(verlets[i].Pos.X, verlets[i].Pos.Z);
+
+                if(verlets[i].Pos.Y > terrainHeight)
+                {  // air resistanse
+                    verlets[i].AddSqFriction(d, 0.05f);
+                    verlets[i].AddSqFriction(r, 0.05f);
+                    verlets[i].AddSqFriction(u, 0.05f);
                 }
-                if (cntrBackward)
+                else
                 {
-                    verlets[0].Acc -= d * movementVelocity;
-                    verlets[1].Acc -= d * movementVelocity;
-                    verlets[2].Acc -= d * movementVelocity;
-                    verlets[3].Acc -= d * movementVelocity;
+                    verlets[i].AddSqFriction(d, 2f);
+                    verlets[i].AddSqFriction(r, 10f);
+                    verlets[i].AddSqFriction(u, 0.05f);
+                    if (i < 4) verletOnGround[i] = true;
                 }
-                if (cntrRight)
+
+            }
+
+
+            float movementVelocity = 80f;
+            Vector3[] accs = { Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero };
+            if (cntrForward)
+            {
+                accs[0] += d * movementVelocity;
+                accs[1] += d * movementVelocity;
+                accs[2] += d * movementVelocity;
+                accs[3] += d * movementVelocity;
+            }
+            if (cntrBackward)
+            {
+                accs[0] -= d * movementVelocity;
+                accs[1] -= d * movementVelocity;
+                accs[2] -= d * movementVelocity;
+                accs[3] -= d * movementVelocity;
+            }
+            if (cntrRight)
+            {
+                accs[0] += d * movementVelocity;
+                accs[1] -= d * movementVelocity;
+                accs[2] -= d * movementVelocity;
+                accs[3] += d * movementVelocity;
+            }
+            if (cntrLeft)
+            {
+                accs[0] -= d * movementVelocity;
+                accs[1] += d * movementVelocity;
+                accs[2] += d * movementVelocity;
+                accs[3] -= d * movementVelocity;
+            }
+
+            
+            for( int i=0; i<4;  i++)
+            {
+                if(verletOnGround[i])
                 {
-                    verlets[0].Acc += d * movementVelocity;
-                    verlets[1].Acc -= d * movementVelocity;
-                    verlets[2].Acc -= d * movementVelocity;
-                    verlets[3].Acc += d * movementVelocity;
-                }
-                if (cntrLeft)
-                {
-                    verlets[0].Acc -= d * movementVelocity;
-                    verlets[1].Acc += d * movementVelocity;
-                    verlets[2].Acc += d * movementVelocity;
-                    verlets[3].Acc -= d * movementVelocity;
+                    verlets[i].Acc += accs[i];
                 }
             }
 
