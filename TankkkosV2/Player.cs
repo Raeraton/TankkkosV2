@@ -13,45 +13,76 @@ namespace Tankkkos
         bool dontShoot = false;
 
         Model model;
-        Vector3 modelDirection = Vector3.Zero;
+        float TowerDirection = 0;
 
         public Camera Camera;
 
         Terrain terrain;
 
-        Effect effect;
-
-        public float CameraDistance = 5;
+        public float CameraDistance = 10;
         public float MovementSpeed = 0.3f;
 
         GraphicsDevice dev;
 
         BasicGeometry debugSphere;
 
-        Matrix localTransform => 
-                Matrix.CreateRotationX( -MathF.PI / 2 )
-                * Matrix.CreateScale(1f, 1f, 1f)
-                * Matrix.CreateRotationY( -MathF.Atan2( modelDirection.Z, modelDirection.X) + MathF.PI / 2 );
+        Matrix localTransform => Matrix.CreateScale(0.4f) * Matrix.CreateRotationZ(MathF.PI / 2);
+//                Matrix.CreateRotationX( -MathF.PI / 2 )
+//                * Matrix.CreateScale(1f, 1f, 1f)
+//                * Matrix.CreateRotationY( -MathF.Atan2( modelDirection.Z, modelDirection.X) + MathF.PI / 2 );
 
         public Vector3 Position => (verlets[0].Pos + verlets[1].Pos +
             verlets[2].Pos + verlets[3].Pos) * 0.25f;
         public Vector3 Direction => verlets[0].Pos - verlets[3].Pos;
         public Vector3 Right => verlets[1].Pos - verlets[0].Pos;
         public Vector3 Up => 2 * verlets[4].Pos - verlets[0].Pos - verlets[2].Pos;
-        public Matrix WorldTransform => Matrix.CreateWorld(Position + Vector3.Normalize(Up) * 0.25f,
+        public Matrix WorldTransform => Matrix.CreateWorld(Position /*+ Vector3.Normalize(Up) * 0.25f*/,
             Vector3.Normalize(Direction), Vector3.Normalize(Up));
 
+        PointLight sun;
 
-        public Player( GraphicsDevice dev, Terrain terrain, Vector3 position, Camera camera, Model model, Effect effect, PointLight sun ) 
+
+        float[] sunDirFactors;
+        Vector3[] colors;
+
+
+        public Player( GraphicsDevice dev, Terrain terrain, Vector3 position, Camera camera, Model model, PointLight sun ) 
         {
 
             this.terrain = terrain;
             this.Camera = camera;
 
+            // model bullshit
+            ///////////////////////////////////
             this.model = model;
+            sunDirFactors = new float[model.Meshes.Count];
+            colors = new Vector3[model.Meshes.Count];
+            for (int i = 0; i < model.Meshes.Count; i++)
+            {
+                sunDirFactors[i] = -1.0f;
+                colors[i] = new Vector3(1, 1, 1);
+            }
 
+            sunDirFactors[0] = 1.0f;
+            colors[0] = new Vector3(0.2f, 0.5f, 0.2f); // cso
+            colors[1] = new Vector3(0.2f, 0.5f, 0.2f); // test
+            
+            sunDirFactors[2] = 1.0f; // lanctalp
+            sunDirFactors[3] = 1.0f;
+            colors[2] = new Vector3(0.2f);
+            colors[3] = new Vector3(0.2f);
 
+            colors[4] = new Vector3(0.2f, 0.5f, 0.2f); // torony
+
+            sunDirFactors[5] = 1.0f; // felfuggesztes
+            sunDirFactors[6] = 1.0f;
+            colors[5] = new Vector3(0.4f);
+            colors[6] = new Vector3(0.4f);
+
+            /////////////////////////////////////
             debugSphere = BasicGeometry.CreateSphere(dev);
+            
+            
             float w = 0.5f, l = 1;
             verlets =
             [
@@ -68,9 +99,7 @@ namespace Tankkkos
 
             this.dev = dev;
 
-            this.effect = effect;
-            effect.Parameters["sunPos"].SetValue(sun.Position);
-            effect.Parameters["sunShine"].SetValue(sun.Power);
+            this.sun = sun;
 
             Update();
 
@@ -80,55 +109,40 @@ namespace Tankkkos
         public void Draw(Camera cam)
         {
 
-            effect.Parameters["CamPos"].SetValue(cam.Position);
-            effect.Parameters["ViewProj"].SetValue(cam.View * cam.Projection);
-            effect.Parameters["Color"].SetValue(new Vector3(0.1f, 0.4f, 0.1f));
 
-
-            // body
-            effect.Parameters["World"].SetValue(localTransform * WorldTransform);
-            foreach (var part in model.Meshes[0].MeshParts)
+            int index = 0;
+            foreach (var mesh in model.Meshes)
             {
-                dev.SetVertexBuffer(part.VertexBuffer);
-                dev.Indices = part.IndexBuffer;
+                float sunDirFact = sunDirFactors[index];
+                Vector3 color = colors[index];
 
-                effect.CurrentTechnique.Passes[0].Apply();
-                dev.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, part.IndexBuffer.IndexCount);
+                var world = mesh.ParentBone.Transform * localTransform * WorldTransform;
+                if( index == 4 || index == 0)
+                {
+                    world = mesh.ParentBone.Transform * localTransform * Matrix.CreateRotationY(TowerDirection) * WorldTransform;
+                }
+
+                index++;
+
+                foreach (BasicEffect effect in mesh.Effects)
+                {
+                    effect.LightingEnabled = true;
+                    effect.PreferPerPixelLighting = true;
+
+                    effect.DirectionalLight1.Enabled = true;
+                    effect.DirectionalLight1.Direction = sunDirFact * Vector3.Normalize(sun.Position);
+                    effect.DirectionalLight1.DiffuseColor = color;
+                    effect.DirectionalLight1.SpecularColor = new Vector3(1, 1, 1);
+
+                    effect.AmbientLightColor = color * 0.5f;
+
+                    effect.World = world;
+                    effect.View = cam.View;
+                    effect.Projection = cam.Projection;
+                }
+                mesh.Draw();
             }
-
-            // tower
-            var modelDir = Vector3.Normalize(modelDirection);
-            var camDir = Vector3.Normalize( this.Camera.Direction );
-            effect.Parameters["World"].SetValue(
-                localTransform *
-                Matrix.CreateRotationY(-MathF.Atan2(camDir.Z, camDir.X) + MathF.Atan2(modelDir.Z, modelDir.X) ) *
-                Matrix.CreateTranslation(new Vector3(modelDir.X, -0.45f, modelDir.Z) * -0.5f)
-                * WorldTransform);
-            foreach (var part in model.Meshes[1].MeshParts)
-            {
-                dev.SetVertexBuffer(part.VertexBuffer);
-                dev.Indices = part.IndexBuffer;
-
-                effect.CurrentTechnique.Passes[0].Apply();
-                dev.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, part.IndexBuffer.IndexCount);
-            }
-
-            //cannon
-            effect.Parameters["World"].SetValue(
-                localTransform *
-                Matrix.CreateTranslation(0f, 0.35f, 0)
-                * WorldTransform );
-            foreach (var part in model.Meshes[2].MeshParts)
-            {
-                dev.SetVertexBuffer(part.VertexBuffer);
-                dev.Indices = part.IndexBuffer;
-
-                effect.CurrentTechnique.Passes[0].Apply();
-                dev.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, part.IndexBuffer.IndexCount);
-            }
-
-
-
+            
 
 
             // Debug
@@ -189,12 +203,12 @@ namespace Tankkkos
         {
             var ks = Keyboard.GetState();
 
-            if( ks.IsKeyDown( Keys.Q ))
-                Camera.Direction = Vector3.Transform(Camera.Direction, Matrix.CreateRotationY( 0.05f ) );
-
+            if (ks.IsKeyDown(Keys.Q))
+                TowerDirection += 0.05f;
             if (ks.IsKeyDown(Keys.E))
-                Camera.Direction = Vector3.Transform(Camera.Direction, Matrix.CreateRotationY(-0.05f));
-
+                TowerDirection -= 0.05f;
+            
+            Camera.Direction = Vector3.Transform(Direction, Matrix.CreateRotationY(TowerDirection)) - 0.3f*Up;
             Camera.Position = Position - Vector3.Normalize(Camera.Direction) * CameraDistance;
 
 
@@ -209,9 +223,10 @@ namespace Tankkkos
 
             if( cntrShoot)
             {
-                var bulletPos = Position + Vector3.Normalize(Direction) * 2f;
+                var bullDir = Vector3.Transform(Direction, Matrix.CreateRotationY(TowerDirection));
+                var bulletPos = Position + bullDir * 2f;
                 bulletPos.Y = Position.Y + 2f;
-                var bulletVel = Vector3.Normalize(Direction) * 20f + Vector3.Normalize(Up) * 5f;
+                var bulletVel = bullDir * 20f + Vector3.Normalize(Up) * 5f;
 
                 if (cntrShoot && !dontShoot)
                 {

@@ -1,9 +1,13 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using SharpDX.MediaFoundation;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.DirectoryServices;
 using System.Threading;
+using System.Xml.Schema;
+using TankkkosV2;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace Tankkkos
@@ -65,7 +69,7 @@ namespace Tankkkos
                 float posX = (texX-0.5f)*2f;
                 float posZ = (texZ - 0.5f) * 2f;
 
-                float height = terrain.GetHeightAtPoint(posX*scale.X + middle.X, posZ*scale.Z + middle.Z) * scale.Y + middle.Y;
+                float height = terrain.GetHeightAtPointWorld(posX*scale.X + middle.X, posZ*scale.Z + middle.Z) * scale.Y / MaxHeight + middle.Y;
 
                 Vector3 normal = terrain.GetNormalAtPoint(posX * scale.X + middle.X, posZ * scale.Z + middle.Z);
 
@@ -337,7 +341,7 @@ namespace Tankkkos
                 return true;
             }
 
-            newMiddlePoint = Vector3.Zero;
+            newMiddlePoint = middlePoint; // TODO zero
             return false;
         }
         public void update( GraphicsDevice dev, Terrain terr, Vector3 middlePoint, int resolution)
@@ -413,12 +417,17 @@ namespace Tankkkos
 
         float waterLevel = 0.1f;
 
+        List<Krater> Kraters = new();
+        Mutex KraterMutex = new();
+        public long KraterCounter = 0;
+
+        Mutex UpdateMutex = new();
+
+
         
 
 
-        Terrain_part middle;
-        TerrainLayer[] layers;
-        TerrainPartHandler terrainPartHandler;
+        public TerrainPartHandler terrainPartHandler;
         public Terrain(GraphicsDevice dev, Effect effect, Texture2D grassTex, Texture2D rockTex, Texture2D sandTex, PointLight sun, int resolution, Vector3 closest_scale, uint layerCount)
         {
             this.dev = dev;
@@ -438,15 +447,18 @@ namespace Tankkkos
 
         }
 
-        public void Update( Vector3 playerPos)
+        public void Update( Vector3 playerPos, bool forcedUpdate = false)
         {
             Vector3 newMiddlePoint;
-            if (!terrainPartHandler.NeedsUpdate(playerPos, middlePoint, out newMiddlePoint)) return;
+            if (!terrainPartHandler.NeedsUpdate(playerPos, middlePoint, out newMiddlePoint) && !forcedUpdate) return;
+
 
             middlePoint = newMiddlePoint;
             new Thread(() => {
+                UpdateMutex.WaitOne();
                 terrainPartHandler.update(dev, this, middlePoint, resolution);
                 terrainPartHandler.swap();
+                UpdateMutex.ReleaseMutex();
             }).Start();
 
         }
@@ -471,6 +483,7 @@ namespace Tankkkos
             x /= mountainScaleW;
             z /= mountainScaleW;
 
+
             float height = mountain.getHeightAtPoint(x, z);
 
             return height - waterLevel;
@@ -478,7 +491,17 @@ namespace Tankkkos
 
         public float GetHeightAtPointWorld(float x, float z)
         {
-            return GetHeightAtPoint(x, z) * MaxHeight;
+
+            float kratersImpact = 0f;
+            Vector2 pos = new Vector2(x, z);
+            KraterMutex.WaitOne();
+            foreach (var krater in Kraters)
+            {
+                kratersImpact += krater.GetImpackAtPoint(pos);
+            }
+            KraterMutex.ReleaseMutex();
+
+            return GetHeightAtPoint(x, z) * MaxHeight + kratersImpact;
         }
 
         public Vector3 GetNormalAtPoint(float x, float z)
@@ -499,6 +522,27 @@ namespace Tankkkos
             normal.Normalize();
 
             return normal;
+        }
+
+        public void AddCrater( Vector3 impaktPosition)
+        {
+            KraterMutex.WaitOne();
+            Kraters.Add(new Krater(new Vector2(impaktPosition.X, impaktPosition.Z), 10f));
+            KraterMutex.ReleaseMutex();
+
+            // runs at 60 fps -> 
+            KraterCounter++;
+        }
+
+
+        public void UpdateTerrain(Vector3 playerPosition) {
+            if (KraterCounter > 0) KraterCounter++;
+
+            if (KraterCounter > 30)
+            {
+                KraterCounter = 0;
+                this.Update(playerPosition, true);
+            }
         }
 
 

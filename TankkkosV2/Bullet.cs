@@ -41,7 +41,7 @@ namespace Tankkkos
         }
 
         bool TestForCollission() {
-            return (Position.Y < terrain.GetHeightAtPointWorld(Position.X, Position.Y));
+            return Position.Y < terrain.GetHeightAtPointWorld(Position.X, Position.Z);
         }
 
         public void Draw(Camera cam) {

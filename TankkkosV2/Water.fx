@@ -6,6 +6,7 @@ float Time;
 float waveF1 = 0.01, waveF2 = 0.2;
 float2 waveV1 = float2(0.006, 0.008), waveV2 = float2(-0.02, 0.042);
 texture2D ReflectionMap;
+float4 WaterColor = float4(0, 0.1, 0.45, 0.36);
 
 float WaterDarkness = -1; // must be negative
 
@@ -70,7 +71,7 @@ float4 PS(VSO vso) : COLOR
     float2 reflectionTexCoord = reversedTexCoord + n.xy * 0.05 * saturate(-height);
     float3 reflectionDiffuse = tex2D(ReflectionMapSampler, reflectionTexCoord).rgb;
     // refraction
-    float3 deepWaterColor = float3(0.0, 0.25, 0.36); // water base color
+    float3 deepWaterColor = WaterColor; // water base color
     float3 refractionDiffuse = lerp(tex2D(RefractionMapSampler, texCoord).rgb, deepWaterColor,
         saturate(WaterDarkness * height));
     // fresnel

@@ -25,6 +25,8 @@ namespace Tankkkos
         Player player;
 
         Camera activeCamera = Camera.Main;
+        GhostCamera ghostCamera;
+        bool player_camera = true;
 
         List<Bullet> my_bullets;
 
@@ -74,17 +76,19 @@ namespace Tankkkos
 
             terrain = new Terrain(GraphicsDevice, Content.Load<Effect>("Terrain"),
                 Content.Load<Texture2D>("grass1"), Content.Load<Texture2D>("rock1"), Content.Load<Texture2D>("sand1"),
-                sun, 128, new Vector3(16f, 1f, 16f), 3 );
+                sun, 64, new Vector3(16f, 1f, 16f), 4 );
 
             skyBox = new SkyBox(GraphicsDevice, Content.Load<Texture2D>("skybox"));
 
             player = new Player(GraphicsDevice, terrain, new Vector3(0, 100, 0), activeCamera,
-                        Content.Load<Model>("tank"), Content.Load<Effect>("Player"), sun );
+                        Content.Load<Model>("tank"), sun );
 
             water = new(GraphicsDevice, Content.Load<Texture2D>("wave2"),
                 Content.Load<Effect>("Water"));
 
             my_bullets = new List<Bullet>();
+
+            ghostCamera = new GhostCamera( new Camera() );
 
         }
 
@@ -95,19 +99,35 @@ namespace Tankkkos
                 Exit();
 
             var delataTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            
+            //input
+            if (Keyboard.GetState().IsKeyDown(Keys.Tab)) player_camera = !player_camera;
+            if (player_camera)
+            {
+                player.Update();
+                ghostCamera.Cam.Position = player.Position;
+                ghostCamera.Cam.Direction = player.Direction;
+                activeCamera = player.Camera;
+            }
+            else
+            {
+                ghostCamera.Update();
+                activeCamera = ghostCamera.Cam;
+            }
 
-            player.Update();
+
             player.Step(ref my_bullets);
 
             my_bullets.RemoveAll(b => {
                 if( b.Update(delataTime))
                 {
-                    // terrain.AddCrater(new Vector2(b.Position.X, b.Position.Z));
+                    terrain.AddCrater(b.Position);
                     return true;
                 }
                 return false;
             });
 
+            terrain.UpdateTerrain(player.Position);
             terrain.Update(player.Position);
 
             base.Update(gameTime);
@@ -115,6 +135,7 @@ namespace Tankkkos
 
         long secStart = DateTimeOffset.Now.ToUnixTimeMilliseconds();
         long frameCount = 0;
+        long showFrameCount = 0;
         protected override void Draw(GameTime gameTime)
         {
             activeCamera.AspectRatio = GraphicsDevice.Viewport.AspectRatio;
@@ -122,10 +143,12 @@ namespace Tankkkos
             long td = DateTimeOffset.Now.ToUnixTimeMilliseconds() - secStart;
             if( td > 1000 )
             {
-                Window.Title = $"Tankkkos xd - FPS: {(frameCount)}";
+                showFrameCount = frameCount;
                 secStart = DateTimeOffset.Now.ToUnixTimeMilliseconds();
                 frameCount = 0;
             }
+
+            Window.Title = $"Tankkkos xd - FPS: {(showFrameCount)}";
 
             frameCount++;
 
@@ -136,19 +159,20 @@ namespace Tankkkos
             GraphicsDevice.SetRenderTarget(heightMap);
             GraphicsDevice.Clear(ClearOptions.Target | ClearOptions.DepthBuffer,
                 new Vector4(-100.0f, 0, 0, 0), 1, 0);
-            terrain.DrawHeight(Camera.Main);
+            terrain.DrawHeight(activeCamera);
 
             // water refraction
             GraphicsDevice.SetRenderTarget(waterRefraction);
             GraphicsDevice.Clear(Color.Black);
-            terrain.DrawRefraction(Camera.Main);
+            terrain.DrawRefraction(activeCamera);
 
 
             // water reflection
             GraphicsDevice.SetRenderTarget(waterReflection);
             GraphicsDevice.Clear(Color.Green);
-            var reflectionCam = Camera.Main.GetReflection(Vector3.Up);
+            var reflectionCam = activeCamera.GetReflection(Vector3.Up);
 
+            GraphicsDevice.RasterizerState = RasterizerState.CullNone;
             player.Draw(reflectionCam);
             foreach (var b in my_bullets)
                 b.Draw(reflectionCam);
@@ -159,7 +183,7 @@ namespace Tankkkos
             GraphicsDevice.SetRenderTarget(null);
             GraphicsDevice.Clear(Color.Red);
 
-            player.Draw();
+            player.Draw(activeCamera);
 
             foreach (var b in my_bullets)
                 b.Draw(activeCamera);
