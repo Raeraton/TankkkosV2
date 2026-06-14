@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -7,7 +8,7 @@ using Tankkkos;
 
 namespace TankkkosV2
 {
-    internal class Enemy : Body
+    internal class Enemy : Collision
     {
 
         Model model;
@@ -29,6 +30,11 @@ namespace TankkkosV2
         public Vector3 Up => 2 * verlets[4].Pos - verlets[0].Pos - verlets[2].Pos;
         public Matrix WorldTransform => Matrix.CreateWorld(Position /*+ Vector3.Normalize(Up) * 0.25f*/,
             Vector3.Normalize(Direction), Vector3.Normalize(Up));
+
+        public override CollisionCircle[] CollisionCircles => [
+            new CollisionCircle(Position+Vector3.Normalize(Up)*0.5f+Vector3.Normalize(Direction)*0.5f, 1f),
+            new CollisionCircle(Position+Vector3.Normalize(Up)*0.5f-Vector3.Normalize(Direction)*0.5f, 1f)
+        ];
 
         float[] sunDirFactors;
         Vector3[] colors;
@@ -156,6 +162,13 @@ namespace TankkkosV2
             debugSphere.Effect.DiffuseColor = Color.Blue.ToVector3() + Color.Red.ToVector3();
             debugSphere.Draw(Matrix.CreateScale(debugSphereSize) * Matrix.CreateTranslation(Position + Vector3.Normalize(Right) * 2f),
                     cam.View, cam.Projection);
+
+            foreach (var c in CollisionCircles)
+            {
+                debugSphere.Effect.DiffuseColor = Color.Yellow.ToVector3();
+                debugSphere.Draw(Matrix.CreateScale(c.radius) * Matrix.CreateTranslation(c.middle),
+                    cam.View, cam.Projection);
+            }
             */
 
 
@@ -163,16 +176,16 @@ namespace TankkkosV2
 
 
 
-        public void Step(Vector3 playerPos)
+        public void Step(Vector3 playerPos, List<Collision> collisions)
         {
-            ApplyForces(playerPos);
+            ApplyForces(playerPos, collisions);
             for (int i = 0; i < verlets.Length; i++)
                 verlets[i].Step();
             ApplyConstraints();
 
         }
 
-        private void ApplyForces( Vector3 playerPos )
+        private void ApplyForces( Vector3 playerPos, List<Collision> collisions )
         {
 
             // Gravitáció
@@ -237,6 +250,12 @@ namespace TankkkosV2
             for(int i = 0; i < 4; i++)
             {
                 verlets[i].Acc += accs[i];
+            }
+
+            foreach (var c in collisions)
+            {
+                if (c == this) continue;
+                Collide(c);
             }
 
 

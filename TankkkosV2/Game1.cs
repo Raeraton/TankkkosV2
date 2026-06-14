@@ -98,20 +98,21 @@ namespace Tankkkos
         }
 
 
-        uint dfjgnodnsg = 0;
+        uint updateCount = 0;
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            if(dfjgnodnsg++ > 600) 
+            if(updateCount++ > 3000) 
             {
-                dfjgnodnsg = 0;
+                updateCount = 0;
                 Enemies.Add(new Enemy(GraphicsDevice, terrain, player.Position + Vector3.Up * 10, EnemyModel, sun));
             }
 
             var delataTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-            
+
+
             //input
             if (Keyboard.GetState().IsKeyDown(Keys.Tab)) player_camera = !player_camera;
             if (player_camera)
@@ -128,7 +129,20 @@ namespace Tankkkos
             }
 
 
-            player.Step(ref my_bullets);
+            List<Collision> collisions = new List<Collision>();
+            foreach(var enemy in Enemies)
+            {
+                collisions.Add(enemy);
+            }
+            collisions.Add(player);
+
+            player.Step(ref my_bullets, collisions);
+
+            foreach (var enemy in Enemies)
+            {
+                enemy.Step(player.Position, collisions);
+            }
+
 
             my_bullets.RemoveAll(b => {
                 if( b.Update(delataTime))
@@ -138,11 +152,6 @@ namespace Tankkkos
                 }
                 return false;
             });
-
-            foreach( var enemy in Enemies)
-            {
-                enemy.Step(player.Position);
-            }
 
             terrain.UpdateTerrain(player.Position);
             terrain.Update(player.Position);

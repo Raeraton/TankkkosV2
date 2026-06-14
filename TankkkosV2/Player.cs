@@ -2,15 +2,16 @@
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using SharpDX;
 using System;
 using System.Collections.Generic;
+using TankkkosV2;
 using static TankkkosV2.Collision;
 
 namespace Tankkkos
 {
-    internal class Player : Body
+    internal class Player : Collision
     {
+
 
         bool cntrForward = false, cntrBackward = false, cntrLeft = false, cntrRight = false, cntrShoot = false;
         bool dontShoot = false;
@@ -31,9 +32,9 @@ namespace Tankkkos
         BasicGeometry debugSphere;
 
         Matrix localTransform => Matrix.CreateScale(0.4f) * Matrix.CreateRotationZ(MathF.PI / 2);
-//                Matrix.CreateRotationX( -MathF.PI / 2 )
-//                * Matrix.CreateScale(1f, 1f, 1f)
-//                * Matrix.CreateRotationY( -MathF.Atan2( modelDirection.Z, modelDirection.X) + MathF.PI / 2 );
+        //                Matrix.CreateRotationX( -MathF.PI / 2 )
+        //                * Matrix.CreateScale(1f, 1f, 1f)
+        //                * Matrix.CreateRotationY( -MathF.Atan2( modelDirection.Z, modelDirection.X) + MathF.PI / 2 );
 
         public Vector3 Position => (verlets[0].Pos + verlets[1].Pos +
             verlets[2].Pos + verlets[3].Pos) * 0.25f;
@@ -42,6 +43,11 @@ namespace Tankkkos
         public Vector3 Up => 2 * verlets[4].Pos - verlets[0].Pos - verlets[2].Pos;
         public Matrix WorldTransform => Matrix.CreateWorld(Position /*+ Vector3.Normalize(Up) * 0.25f*/,
             Vector3.Normalize(Direction), Vector3.Normalize(Up));
+
+        public override CollisionCircle[] CollisionCircles => [
+            new CollisionCircle(Position+Vector3.Normalize(Up)*0.5f+Vector3.Normalize(Direction)*0.5f, 1f),
+            new CollisionCircle(Position+Vector3.Normalize(Up)*0.5f-Vector3.Normalize(Direction)*0.5f, 1f)
+        ];
 
         PointLight sun;
 
@@ -177,8 +183,14 @@ namespace Tankkkos
             debugSphere.Effect.DiffuseColor = Color.Blue.ToVector3() + Color.Red.ToVector3();
             debugSphere.Draw(Matrix.CreateScale(debugSphereSize) * Matrix.CreateTranslation(Position + Vector3.Normalize(Right) * 2f),
                     cam.View, cam.Projection);
-            */
 
+            foreach (var c in CollisionCircles)
+            {
+                debugSphere.Effect.DiffuseColor = Color.Yellow.ToVector3();
+                debugSphere.Draw(Matrix.CreateScale(c.radius) * Matrix.CreateTranslation(c.middle),
+                    cam.View, cam.Projection);
+            }
+            */
 
         }
 
@@ -227,9 +239,9 @@ namespace Tankkkos
 
         }
 
-        public void Step( ref List<Bullet> bullets )
+        public void Step( ref List<Bullet> bullets, List<Collision> colliders )
         {
-            ApplyForces();
+            ApplyForces(colliders);
             for (int i = 0; i < verlets.Length; i++)
                 verlets[i].Step();
             ApplyConstraints();
@@ -251,7 +263,7 @@ namespace Tankkkos
 
         }
 
-        private void ApplyForces()
+        private void ApplyForces(List<Collision> collisions)
         {
 
             // Gravitáció
@@ -338,6 +350,12 @@ namespace Tankkkos
                 {
                     verlets[i].Acc += accs[i];
                 }
+            }
+
+            foreach (var c in collisions)
+            {
+                if(c == this) continue;
+                Collide(c);
             }
 
 
