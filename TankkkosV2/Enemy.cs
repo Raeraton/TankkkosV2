@@ -11,6 +11,8 @@ namespace TankkkosV2
     internal class Enemy : Collision
     {
 
+        public bool Dead = false;
+
         Model model;
 
         Terrain terrain;
@@ -54,7 +56,7 @@ namespace TankkkosV2
                 new Verlet( new Vector3( l, 0, w )  + position),
                 new Verlet( new Vector3( -l, 0, w ) + position),
                 new Verlet( new Vector3( -l, 0, -w ) + position ),
-                new Verlet( new Vector3( 0, 1, 0 ) + position),
+                new Verlet( new Vector3( 0, 1, 0 ) + position), // tower top idx = 4
                 new Verlet( new Vector3( l, 0.6f, -w ) + position),
                 new Verlet( new Vector3( l, 0.6f, w ) + position),
                 new Verlet( new Vector3( -l, 0.6f, w ) + position),
@@ -206,6 +208,12 @@ namespace TankkkosV2
                 {
                     Vector3 terrainNormal = terrain.GetNormalAtPoint(verlets[i].Pos.X, verlets[i].Pos.Z);
                     verlets[i].pPos.Y = verlets[i].Pos.Y - (terrainHeight - verlets[i].Pos.Y - 0.1f);
+                    if (i == 4) {
+                        Dead = true;
+                        colors[0] = new Vector3(0.3f);
+                        colors[1] = new Vector3(0.3f);
+                        colors[4] = new Vector3(0.3f);
+                    }
                 }
             }
 
@@ -233,30 +241,33 @@ namespace TankkkosV2
 
             }
 
-            
-
-            float movementVelocity = 40f;
-
-            Vector3 left = Vector3.Normalize(-r);
-            Vector3 right = Vector3.Normalize(r);
-            Vector3 playerDir = Vector3.Normalize(Position - playerPos);
-            float leftThrotle = 1f - Vector3.Dot(left, playerDir);
-            float rightThrotle = 1f - Vector3.Dot(right, playerDir);
-
-            Vector3[] accs = { Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero };
-            LeftSideThrotle(ref accs, verletOnGround, d, leftThrotle * movementVelocity);
-            RightSideThrotle(ref accs, verletOnGround, d, rightThrotle * movementVelocity);
-
-            for(int i = 0; i < 4; i++)
-            {
-                verlets[i].Acc += accs[i];
-            }
 
             foreach (var c in collisions)
             {
                 if (c == this) continue;
                 Collide(c);
             }
+
+            if (!Dead)
+            {
+                float movementVelocity = 40f;
+
+                Vector3 left = Vector3.Normalize(-r);
+                Vector3 right = Vector3.Normalize(r);
+                Vector3 playerDir = Vector3.Normalize(Position - playerPos);
+                float leftThrotle = 1f - Vector3.Dot(left, playerDir);
+                float rightThrotle = 1f - Vector3.Dot(right, playerDir);
+
+                Vector3[] accs = { Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero };
+                LeftSideThrotle(ref accs, verletOnGround, d, leftThrotle * movementVelocity);
+                RightSideThrotle(ref accs, verletOnGround, d, rightThrotle * movementVelocity);
+
+                for (int i = 0; i < 4; i++)
+                {
+                    verlets[i].Acc += accs[i];
+                }
+            }
+
 
 
         }
@@ -271,8 +282,6 @@ namespace TankkkosV2
             if (verletOnGround[0]) accs[0] += dir * force;
             if (verletOnGround[3]) accs[3] += dir * force;
         }
-
-
 
 
     }

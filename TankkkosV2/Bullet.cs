@@ -13,6 +13,8 @@ namespace Tankkkos
         public Vector3 Position;
         Vector3 Velocity;
 
+        public float Radius = 3.0f;
+
         Terrain terrain;
 
         BasicGeometry sphere;

@@ -3,6 +3,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SharpDX.Direct2D1.Effects;
 using System;
 using System.Collections.Generic;
 using TankkkosV2;
@@ -98,7 +99,7 @@ namespace Tankkkos
         }
 
 
-        uint updateCount = 0;
+        uint updateCount = 0xffffffff;
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
@@ -147,7 +148,18 @@ namespace Tankkkos
             my_bullets.RemoveAll(b => {
                 if( b.Update(delataTime))
                 {
-                    terrain.AddCrater(b.Position);
+                    terrain.AddCrater(b.Position, b.Radius);
+                    foreach( var e in Enemies)
+                    {
+                        Vector3 diff = b.Position - e.Position;
+                        float dist = diff.Length();
+                        if( dist < b.Radius) {
+                            for(int i=0;  i<e.verlets.Length; i++)
+                            {
+                                e.verlets[i].pPos = e.verlets[i].Pos + diff * (b.Radius - dist) * 0.45f;
+                            }
+                        }
+                    }
                     return true;
                 }
                 return false;

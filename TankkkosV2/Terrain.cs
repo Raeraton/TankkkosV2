@@ -452,7 +452,6 @@ namespace Tankkkos
             Vector3 newMiddlePoint;
             if (!terrainPartHandler.NeedsUpdate(playerPos, middlePoint, out newMiddlePoint) && !forcedUpdate) return;
 
-
             middlePoint = newMiddlePoint;
             new Thread(() => {
                 UpdateMutex.WaitOne();
@@ -460,8 +459,9 @@ namespace Tankkkos
                 terrainPartHandler.swap();
                 UpdateMutex.ReleaseMutex();
             }).Start();
-
         }
+
+        public void UpdateParts( Vector3 updateAround) { }
 
         public void Draw(Camera cam)
         {
@@ -524,10 +524,10 @@ namespace Tankkkos
             return normal;
         }
 
-        public void AddCrater( Vector3 impaktPosition)
+        public void AddCrater( Vector3 impaktPosition, float radius)
         {
             KraterMutex.WaitOne();
-            Kraters.Add(new Krater(new Vector2(impaktPosition.X, impaktPosition.Z), 10f));
+            Kraters.Add(new Krater(new Vector2(impaktPosition.X, impaktPosition.Z), radius));
             KraterMutex.ReleaseMutex();
 
             // runs at 60 fps -> 
