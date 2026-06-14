@@ -2,8 +2,10 @@
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SharpDX;
 using System;
 using System.Collections.Generic;
+using static TankkkosV2.Collision;
 
 namespace Tankkkos
 {
@@ -15,6 +17,7 @@ namespace Tankkkos
 
         Model model;
         float TowerDirection = 0;
+        float TowerHeight = 0.1f;
 
         public Camera Camera;
 
@@ -92,6 +95,10 @@ namespace Tankkkos
                 new Verlet( new Vector3( -l, 0, w ) + position),
                 new Verlet( new Vector3( -l, 0, -w ) + position ),
                 new Verlet( new Vector3( 0, 1, 0 ) + position),
+                new Verlet( new Vector3( l, 0.6f, -w ) + position),
+                new Verlet( new Vector3( l, 0.6f, w ) + position),
+                new Verlet( new Vector3( -l, 0.6f, w ) + position),
+                new Verlet( new Vector3( -l, 0.6f, -w ) + position)
             ];
             GenerateFullyConnectedBody();
 
@@ -146,6 +153,7 @@ namespace Tankkkos
 
 
             // Debug
+            /*
             float debugSphereSize = 0.3f;
             debugSphere.Effect.DiffuseColor = Color.White.ToVector3();
             foreach (var v in verlets)
@@ -169,7 +177,7 @@ namespace Tankkkos
             debugSphere.Effect.DiffuseColor = Color.Blue.ToVector3() + Color.Red.ToVector3();
             debugSphere.Draw(Matrix.CreateScale(debugSphereSize) * Matrix.CreateTranslation(Position + Vector3.Normalize(Right) * 2f),
                     cam.View, cam.Projection);
-
+            */
 
 
         }
@@ -207,8 +215,13 @@ namespace Tankkkos
                 TowerDirection += 0.05f;
             if (ks.IsKeyDown(Keys.E))
                 TowerDirection -= 0.05f;
+
+            if (ks.IsKeyDown(Keys.Z))
+                TowerHeight += 0.05f;
+            if (ks.IsKeyDown(Keys.H))
+                TowerHeight -= 0.05f;
             
-            Camera.Direction = Vector3.Transform(Direction, Matrix.CreateRotationY(TowerDirection)) - 0.3f*Up;
+            Camera.Direction = Vector3.Transform(Direction, Matrix.CreateRotationY(TowerDirection)) - TowerHeight*Up;
             Camera.Position = Position - Vector3.Normalize(Camera.Direction) * CameraDistance;
 
 
@@ -287,7 +300,7 @@ namespace Tankkkos
             }
 
 
-            float movementVelocity = 80f;
+            float movementVelocity = 100f;
             Vector3[] accs = { Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero };
             if (cntrForward)
             {

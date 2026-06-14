@@ -141,7 +141,7 @@ namespace Tankkkos
 
             foreach( var enemy in Enemies)
             {
-                enemy.Step();
+                enemy.Step(player.Position);
             }
 
             terrain.UpdateTerrain(player.Position);
